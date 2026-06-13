@@ -1,0 +1,86 @@
+@import "tailwindcss";
+
+:root {
+  --background: #ffffff;
+  --foreground: #171717;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #0a0a0a;
+    --foreground: #ededed;
+  }
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+/* ── Game Layout ─────────────────────────────────────────────────────────── */
+
+.game-layout {
+  display: flex;
+  flex-direction: row;
+  width: 100vw;
+  height: 100dvh; /* dvh respects mobile browser chrome */
+  overflow: hidden;
+  background: #020617; /* slate-950 */
+}
+
+.tank-container {
+  flex: 1 1 0;
+  min-width: 0;
+  position: relative;
+  overflow: hidden;
+}
+
+.dashboard-container {
+  flex: 0 0 280px;
+  background: #0f172a; /* slate-900 */
+  border-left: 1px solid #1e293b; /* slate-800 */
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+/* Mobile landscape: stack vertically */
+@media screen and (max-width: 1023px) and (orientation: landscape) {
+  .game-layout {
+    flex-direction: column;
+  }
+
+  .tank-container {
+    flex: 0 0 58%;
+  }
+
+  .dashboard-container {
+    flex: 0 0 42%;
+    width: 100%;
+    border-left: none;
+    border-top: 1px solid #1e293b;
+  }
+}
+
+/* Mobile portrait: hide the game layout, show the rotate overlay */
+@media screen and (max-width: 1023px) and (orientation: portrait) {
+  .game-layout {
+    visibility: hidden;
+  }
+
+  .rotate-overlay {
+    display: flex !important;
+  }
+}
+
+/* Default: rotate overlay is hidden */
+.rotate-overlay {
+  display: none;
+}
