@@ -14,6 +14,7 @@ interface AquariumStoreActions {
   updateFish: (aquariumId: string, fishId: string, updates: Partial<Fish>) => void;
   addPlant: (aquariumId: string, plant: Plant) => void;
   removePlant: (aquariumId: string, plantId: string) => void;
+  updatePlant: (aquariumId: string, plantId: string, updates: Partial<Plant>) => void;
   addEquipment: (aquariumId: string, equipment: Equipment) => void;
   removeEquipment: (aquariumId: string, equipmentId: string) => void;
   toggleEquipment: (aquariumId: string, equipmentId: string) => void;
@@ -72,6 +73,15 @@ export const useAquariumStore = create<AquariumStoreState & AquariumStoreActions
       aquariums: s.aquariums.map((a) =>
         a.id === aquariumId
           ? { ...a, plants: a.plants.filter((p) => p.id !== plantId) }
+          : a
+      ),
+    })),
+
+  updatePlant: (aquariumId, plantId, updates) =>
+    set((s) => ({
+      aquariums: s.aquariums.map((a) =>
+        a.id === aquariumId
+          ? { ...a, plants: a.plants.map((p) => (p.id === plantId ? { ...p, ...updates } : p)) }
           : a
       ),
     })),
