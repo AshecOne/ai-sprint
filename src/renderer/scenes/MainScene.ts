@@ -157,6 +157,11 @@ export class MainScene extends Phaser.Scene {
 
     this.syncWithStore();
     this.scale.on("resize", this.handleResize, this);
+
+    // Signal that the scene is fully built and the first sprite layout/sync is
+    // done — the React side waits on this to hide the full-screen loader so the
+    // player never sees a half-rendered tank. (See PhaserGame `onReady`.)
+    this.game.events.emit("scene-ready");
   }
 
   /** Floating particulate that drifts in the water; emission rate is driven

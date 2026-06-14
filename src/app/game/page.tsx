@@ -1,12 +1,13 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import dynamic from "next/dynamic";
 import { Smartphone } from "lucide-react";
 import { useAquariumStore } from "@/store/aquariumStore";
 import { useGameStore } from "@/store/gameStore";
 import { useSimulationLoop } from "@/hooks/useSimulationLoop";
-import { useIsMobile, useRotatePrompt } from "@/hooks/useIsMobile";
+import { useIsMobile, useRotatePrompt, useClientSettled } from "@/hooks/useIsMobile";
+import { GameLoader } from "@/components/game/GameLoader";
 import { TopBar } from "@/components/game/TopBar";
 import { StatsPanel } from "@/components/game/StatsPanel";
 import { ShopPanel } from "@/components/game/ShopPanel";
@@ -16,15 +17,17 @@ import { PanelTabs } from "@/components/game/PanelTabs";
 import { MobileNav } from "@/components/game/MobileNav";
 import { ConfirmProvider } from "@/components/game/ConfirmProvider";
 
-// Phaser canvas is strictly client-side.
+// Phaser canvas is strictly client-side. No `loading` fallback here — the
+// full-screen GameLoader covers the whole page until the scene is truly ready.
 const PhaserGame = dynamic(() => import("@/renderer/PhaserGame"), {
   ssr: false,
-  loading: () => (
-    <div className="absolute inset-0 flex items-center justify-center text-cyan-400 text-xs uppercase tracking-widest">
-      Booting renderer…
-    </div>
-  ),
 });
+
+// Minimum time the loader stays up so the transition feels deliberate (a brief
+// "loading" beat) rather than a flicker.
+const MIN_LOADER_MS = 1500;
+// Safety net: if the scene never signals ready (error/stall), reveal anyway.
+const READY_FALLBACK_MS = 6000;
 
 export default function GamePage() {
   // Drive the simulation tick.
@@ -37,6 +40,22 @@ export default function GamePage() {
   const mobileView = useGameStore((s) => s.mobileView);
   const isMobile = useIsMobile();
   const showRotatePrompt = useRotatePrompt();
+  const settled = useClientSettled();
+
+  // Loading gate: hide the overlay only once the scene reports ready, the
+  // min display time has passed, AND the mobile/rotate layout has settled.
+  const [sceneReady, setSceneReady] = useState(false);
+  const [minTimeElapsed, setMinTimeElapsed] = useState(false);
+  const ready = sceneReady && minTimeElapsed && settled;
+
+  useEffect(() => {
+    const minT = setTimeout(() => setMinTimeElapsed(true), MIN_LOADER_MS);
+    const fallback = setTimeout(() => setSceneReady(true), READY_FALLBACK_MS);
+    return () => {
+      clearTimeout(minT);
+      clearTimeout(fallback);
+    };
+  }, []);
 
   useEffect(() => {
     if (!activeAquariumId && aquariums[0]) {
@@ -66,7 +85,10 @@ export default function GamePage() {
             }`}
             data-testid="tank-container"
           >
-            <PhaserGame aquariumId={activeAquariumId} />
+            <PhaserGame
+              aquariumId={activeAquariumId}
+              onReady={() => setSceneReady(true)}
+            />
             {/* HUD overlay */}
             <div className="absolute top-2 left-2 z-10 panel-glass px-2 py-1 text-[9px] sm:text-[10px] tracking-widest text-cyan-300 uppercase">
               <span className="blink-dot mr-2" />
@@ -130,6 +152,10 @@ export default function GamePage() {
           </div>
         </div>
       )}
+
+      {/* Full-screen loading overlay — covers HUD + canvas until the renderer
+          is truly ready, then fades out. Self-unmounts after the fade. */}
+      <GameLoader ready={ready} />
     </main>
     </ConfirmProvider>
   );
