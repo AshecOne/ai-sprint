@@ -6,7 +6,7 @@ import { Smartphone } from "lucide-react";
 import { useAquariumStore } from "@/store/aquariumStore";
 import { useGameStore } from "@/store/gameStore";
 import { useSimulationLoop } from "@/hooks/useSimulationLoop";
-import { useIsMobile } from "@/hooks/useIsMobile";
+import { useIsMobile, useRotatePrompt } from "@/hooks/useIsMobile";
 import { TopBar } from "@/components/game/TopBar";
 import { StatsPanel } from "@/components/game/StatsPanel";
 import { ShopPanel } from "@/components/game/ShopPanel";
@@ -14,7 +14,6 @@ import { EventLog } from "@/components/game/EventLog";
 import { ControlBar } from "@/components/game/ControlBar";
 import { PanelTabs } from "@/components/game/PanelTabs";
 import { MobileNav } from "@/components/game/MobileNav";
-import { X } from "lucide-react";
 
 // Phaser canvas is strictly client-side.
 const PhaserGame = dynamic(() => import("@/renderer/PhaserGame"), {
@@ -35,8 +34,8 @@ export default function GamePage() {
   const setActiveAquariumId = useGameStore((s) => s.setActiveAquariumId);
   const rightPanel = useGameStore((s) => s.rightPanel);
   const mobileView = useGameStore((s) => s.mobileView);
-  const setMobileView = useGameStore((s) => s.setMobileView);
   const isMobile = useIsMobile();
+  const showRotatePrompt = useRotatePrompt();
 
   useEffect(() => {
     if (!activeAquariumId && aquariums[0]) {
@@ -44,18 +43,25 @@ export default function GamePage() {
     }
   }, [activeAquariumId, aquariums, setActiveAquariumId]);
 
-  const mobilePanelTitle =
-    mobileView === "stats" ? "Stats" : mobileView === "shop" ? "Shop" : "Log";
-
   return (
     <main className="h-screen w-screen flex flex-col overflow-hidden crt-scanlines">
       <TopBar />
 
-      <div className="flex-1 flex gap-2 sm:gap-3 px-2 sm:px-3 pb-2 sm:pb-3 overflow-hidden min-h-0">
+      <div
+        className={`flex-1 flex overflow-hidden min-h-0 ${
+          isMobile ? "" : "gap-2 sm:gap-3 px-2 sm:px-3 pt-2 sm:pt-3 pb-2 sm:pb-3"
+        }`}
+      >
         {/* Left: Phaser canvas (rendered once) + control bar */}
-        <section className="flex-1 flex flex-col gap-2 sm:gap-3 min-w-0">
+        <section
+          className={`flex-1 flex flex-col min-w-0 ${
+            isMobile ? "" : "gap-2 sm:gap-3"
+          }`}
+        >
           <div
-            className="tank-container flex-1 relative overflow-hidden"
+            className={`tank-container flex-1 relative overflow-hidden ${
+              isMobile ? "tank-container--bleed" : ""
+            }`}
             data-testid="tank-container"
           >
             <PhaserGame aquariumId={activeAquariumId} />
@@ -65,20 +71,12 @@ export default function GamePage() {
               Live · Tank #1
             </div>
 
-            {/* Mobile: full-screen panel overlay — one window, one focus */}
+            {/* Mobile: full-screen panel overlay — one window, one focus.
+                No header: the bottom nav already labels the view and the
+                "Tank" tab is the way back, so a title bar + close button
+                would just be redundant chrome. */}
             {isMobile && mobileView !== "tank" && (
               <div className="mobile-panel" data-testid="mobile-panel">
-                <div className="mobile-panel__head">
-                  <span className="section-title text-xs">{mobilePanelTitle}</span>
-                  <button
-                    onClick={() => setMobileView("tank")}
-                    className="btn btn-ghost py-1 px-2"
-                    data-testid="mobile-panel-close"
-                    aria-label="Back to tank"
-                  >
-                    <X size={14} />
-                  </button>
-                </div>
                 <div className="mobile-panel__body">
                   {mobileView === "stats" && <StatsPanel />}
                   {mobileView === "shop" && <ShopPanel />}
@@ -116,16 +114,20 @@ export default function GamePage() {
       {/* Mobile: bottom tab navigation */}
       {isMobile && <MobileNav />}
 
-      {/* Mobile portrait: nudge the player to rotate for a bigger tank */}
-      <div className="rotate-notice" role="dialog" aria-label="Rotate your device">
-        <div className="rotate-notice__inner">
-          <Smartphone size={64} strokeWidth={1.5} className="rotate-notice__icon" />
-          <p className="rotate-notice__title">Putar HP ke landscape</p>
-          <p className="rotate-notice__sub">
-            Miringkan layar biar akuariummu lebih lega buat dimainkan 🐟
-          </p>
+      {/* Mobile portrait: nudge the player to rotate for a bigger tank.
+          Rendered only when actually on a small portrait screen so it never
+          flashes on desktop (no reliance on CSS media-query timing). */}
+      {showRotatePrompt && (
+        <div className="rotate-notice" role="dialog" aria-label="Rotate your device">
+          <div className="rotate-notice__inner">
+            <Smartphone size={64} strokeWidth={1.5} className="rotate-notice__icon" />
+            <p className="rotate-notice__title">Putar HP ke landscape</p>
+            <p className="rotate-notice__sub">
+              Miringkan layar biar akuariummu lebih lega buat dimainkan 🐟
+            </p>
+          </div>
         </div>
-      </div>
+      )}
     </main>
   );
 }

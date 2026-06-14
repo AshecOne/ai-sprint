@@ -88,9 +88,11 @@ body {
   background: linear-gradient(180deg, rgba(13, 26, 38, 0.95), rgba(7, 16, 26, 0.95));
   border: 1px solid var(--border-soft);
   border-radius: 8px;
+  /* Soft, shallow shadow — a deep blurred drop made adjacent cards' shadows
+     bleed together and read as one heavy blob. */
   box-shadow:
     inset 0 1px 0 rgba(255, 255, 255, 0.03),
-    0 8px 24px rgba(0, 0, 0, 0.5);
+    0 2px 8px rgba(0, 0, 0, 0.25);
 }
 
 .panel-glass {
@@ -331,6 +333,12 @@ body {
 }
 
 .tank-container canvas { display: block; }
+
+/* Mobile full-bleed: drop the rounded frame so the tank fills the screen */
+.tank-container--bleed {
+  border-radius: 0;
+  border: 0;
+}
 
 .blink-dot {
   display: inline-block;
@@ -583,23 +591,21 @@ body {
 
 /* ============================================================
    Rotate-to-landscape prompt (mobile portrait only)
+   Visibility is gated in JS (useRotatePrompt) so it is never present in
+   the DOM on desktop — no flash from CSS load timing.
    ============================================================ */
-.rotate-notice { display: none; }
-
-@media (max-width: 860px) and (orientation: portrait) {
-  .rotate-notice {
-    display: flex;
-    position: fixed;
-    inset: 0;
-    z-index: 100;
-    align-items: center;
-    justify-content: center;
-    padding: 32px;
-    text-align: center;
-    background:
-      radial-gradient(ellipse at 50% -10%, rgba(94, 231, 247, 0.16), transparent 55%),
-      linear-gradient(180deg, #062436 0%, #04141f 55%, #020c14 100%);
-  }
+.rotate-notice {
+  display: flex;
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  align-items: center;
+  justify-content: center;
+  padding: 32px;
+  text-align: center;
+  background:
+    radial-gradient(ellipse at 50% -10%, rgba(94, 231, 247, 0.16), transparent 55%),
+    linear-gradient(180deg, #062436 0%, #04141f 55%, #020c14 100%);
 }
 .rotate-notice__inner {
   display: flex;
@@ -646,19 +652,13 @@ body {
   flex-direction: column;
   background: linear-gradient(180deg, rgba(13, 26, 38, 0.98), rgba(7, 16, 26, 0.98));
 }
-.mobile-panel__head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  padding: 8px 10px;
-  border-bottom: 1px solid var(--border-soft);
-  flex-shrink: 0;
-}
 .mobile-panel__body {
   flex: 1;
   min-height: 0;
   overflow-y: auto;
+  /* Breathing room so cards don't butt up against the screen edges. */
+  padding: 10px;
+  padding-bottom: calc(10px + env(safe-area-inset-bottom, 0px));
 }
 
 /* Bottom tab bar */

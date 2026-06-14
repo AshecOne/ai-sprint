@@ -17,7 +17,7 @@ export function ShopPanel() {
           <span className="section-title">Fish</span>
           <span className="title-eyebrow text-amber-300">${cash}</span>
         </header>
-        <div className="space-y-1.5" data-testid="shop-fish-list">
+        <div className="divide-y divide-white/[0.06]" data-testid="shop-fish-list">
           {(Object.keys(FISH_SPECIES) as FishSpeciesId[]).map((id) => {
             const spec = FISH_SPECIES[id];
             const canAfford = cash >= spec.price;
@@ -41,7 +41,7 @@ export function ShopPanel() {
         <header className="mb-2">
           <span className="section-title">Plants</span>
         </header>
-        <div className="space-y-1.5" data-testid="shop-plant-list">
+        <div className="divide-y divide-white/[0.06]" data-testid="shop-plant-list">
           {(Object.keys(PLANT_SPECIES) as PlantSpeciesId[]).map((id) => {
             const spec = PLANT_SPECIES[id];
             const canAfford = cash >= spec.price;
@@ -65,7 +65,7 @@ export function ShopPanel() {
         <header className="mb-2">
           <span className="section-title">Equipment</span>
         </header>
-        <div className="space-y-1.5" data-testid="shop-equipment-list">
+        <div className="divide-y divide-white/[0.06]" data-testid="shop-equipment-list">
           {(Object.keys(EQUIPMENT_SPECS) as EquipmentType[]).map((t) => {
             const spec = EQUIPMENT_SPECS[t];
             const canAfford = cash >= spec.price;
@@ -106,7 +106,7 @@ function ShopRow({
   onBuy: () => void;
 }) {
   return (
-    <div className="flex items-center gap-3 px-2 py-2 rounded-md bg-white/[0.02] border border-white/5 hover:border-cyan-400/30 transition-colors">
+    <div className="flex items-center gap-3 px-2 py-2.5 rounded-md hover:bg-white/[0.03] transition-colors">
       <div className="flex-1 min-w-0">
         <div className="text-[12px] font-semibold text-slate-100 truncate">
           {title}

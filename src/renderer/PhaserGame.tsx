@@ -43,8 +43,9 @@ export default function PhaserGame({ aquariumId }: PhaserGameProps) {
         roundPixels: true,
         scene: [MainScene],
         scale: {
+          // RESIZE keeps the canvas matched to its parent; no autoCenter
+          // needed (that's for letterboxed FIT/ENVELOP modes).
           mode: Phaser.Scale.RESIZE,
-          autoCenter: Phaser.Scale.CENTER_BOTH,
         },
         fps: { target: 60, forceSetTimeOut: false },
       };
@@ -54,18 +55,40 @@ export default function PhaserGame({ aquariumId }: PhaserGameProps) {
       // Start the MainScene with aquariumId data
       game.scene.start("MainScene", { aquariumId });
 
-      // ResizeObserver to keep canvas in sync with container
+      // Coalesce rapid resizes (orientation flips fire many events) into one
+      // resize per frame, and avoid the "ResizeObserver loop" warning that a
+      // synchronous resize-inside-observer can trigger.
+      let rafId = 0;
+      const scheduleResize = (w: number, h: number) => {
+        if (rafId) cancelAnimationFrame(rafId);
+        rafId = requestAnimationFrame(() => {
+          rafId = 0;
+          if (gameRef.current) game.scale.resize(w, h);
+        });
+      };
+
+      // ResizeObserver to keep canvas in sync with container (catches layout
+      // reflows that a plain window-resize listener would miss).
       resizeObsRef.current = new ResizeObserver((entries) => {
-        for (const entry of entries) {
-          const { width: w, height: h } = entry.contentRect;
-          if (w > 0 && h > 0) {
-            game.scale.resize(w, h);
-          }
-        }
+        const entry = entries[0];
+        if (!entry) return;
+        const { width: w, height: h } = entry.contentRect;
+        if (w > 0 && h > 0) scheduleResize(w, h);
       });
       resizeObsRef.current.observe(parent);
 
+      // iOS Safari often reports stale dimensions on orientationchange until
+      // the viewport settles, so re-sync to the parent on the next frame.
+      const onOrientation = () => {
+        if (parentRef.current) {
+          scheduleResize(parentRef.current.clientWidth, parentRef.current.clientHeight);
+        }
+      };
+      window.addEventListener("orientationchange", onOrientation);
+
       cleanup = () => {
+        window.removeEventListener("orientationchange", onOrientation);
+        if (rafId) cancelAnimationFrame(rafId);
         resizeObsRef.current?.disconnect();
         resizeObsRef.current = null;
         game.destroy(true);

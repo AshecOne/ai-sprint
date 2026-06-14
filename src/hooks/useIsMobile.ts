@@ -39,3 +39,25 @@ export function useIsMobile(): boolean {
 
   return isMobile;
 }
+
+/**
+ * True only on a small portrait screen — used to show the "rotate to
+ * landscape" prompt. Gated in JS (defaults to false) so the prompt is never
+ * present in the DOM on desktop, avoiding the dev-mode flash where the CSS
+ * `display:none` hasn't loaded yet.
+ */
+const ROTATE_QUERY = "(max-width: 860px) and (orientation: portrait)";
+
+export function useRotatePrompt(): boolean {
+  const [show, setShow] = useState(false);
+
+  useEffect(() => {
+    const mql = window.matchMedia(ROTATE_QUERY);
+    const update = () => setShow(mql.matches);
+    update();
+    mql.addEventListener("change", update);
+    return () => mql.removeEventListener("change", update);
+  }, []);
+
+  return show;
+}
