@@ -2,6 +2,7 @@
 
 import { useAquariumStore } from "@/store/aquariumStore";
 import { FISH_SPECIES } from "@/simulation/species";
+import { cleanReward } from "@/simulation/engine";
 import type { WaterParameters } from "@/simulation/types";
 import { Thermometer, Beaker, Droplet, Wind, Activity, Power } from "lucide-react";
 
@@ -63,6 +64,17 @@ export function StatsPanel() {
         <ParamRow label="Hardness" value={`${water.hardness.toFixed(1)} dGH`} bar={water.hardness / 20} tone={judge(water.hardness, 4, 14, 2, 18).tone} />
         <ParamRow label="Turbidity" value={water.turbidity.toFixed(1)} bar={water.turbidity / 60} tone={judge(water.turbidity, 0, 8, 8, 25).tone} invert />
         <ParamRow label="Cleanliness" value={`${water.cleanliness.toFixed(0)}%`} bar={water.cleanliness / 100} tone={water.cleanliness > 70 ? "good" : water.cleanliness > 40 ? "warn" : "bad"} />
+        <div
+          className="mt-2 flex items-center justify-between rounded-md bg-emerald-500/[0.06] border border-emerald-400/20 px-2.5 py-1.5"
+          data-testid="clean-reward-estimate"
+        >
+          <span className="text-[10px] uppercase tracking-wider text-emerald-300/80">
+            Clean payout
+          </span>
+          <span className="text-[11px] font-semibold tabular-nums text-emerald-300">
+            {cleanReward(water, 1) > 0 ? `+$${cleanReward(water, 1)}` : "—"}
+          </span>
+        </div>
       </section>
 
       {/* Livestock vitals */}

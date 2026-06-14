@@ -2,7 +2,8 @@
 
 import { useAquariumStore } from "@/store/aquariumStore";
 import { useGameStore } from "@/store/gameStore";
-import { Pause, Play, FastForward, Droplets, Cookie, RefreshCw, Trash2 } from "lucide-react";
+import { cleanReward } from "@/simulation/engine";
+import { Pause, Play, FastForward, Droplets, Cookie, RefreshCw, Trash2, Sparkles } from "lucide-react";
 
 export function ControlBar() {
   const paused = useGameStore((s) => s.paused);
@@ -11,9 +12,12 @@ export function ControlBar() {
   const setSpeed = useGameStore((s) => s.setSpeed);
   const feed = useAquariumStore((s) => s.feedFish);
   const change = useAquariumStore((s) => s.doWaterChange);
+  const clean = useAquariumStore((s) => s.cleanTank);
   const resetTank = useAquariumStore((s) => s.resetTank);
   const removeDead = useAquariumStore((s) => s.removeDeadFish);
   const dead = useAquariumStore((s) => s.fish.filter((f) => !f.alive).length);
+  const water = useAquariumStore((s) => s.aquariums[0]?.water);
+  const estReward = water ? cleanReward(water, 1) : 0;
 
   return (
     <div className="panel flex items-center justify-between gap-3 px-3 py-2" data-testid="control-bar">
@@ -53,6 +57,19 @@ export function ControlBar() {
         >
           <Cookie size={12} />
           Feed
+        </button>
+        <button
+          onClick={() => clean()}
+          className="btn btn-emerald"
+          data-testid="clean-tank-button"
+          title={
+            estReward > 0
+              ? `Scrub the tank and sell ~$${estReward} of detritus`
+              : "Tank is clean — nothing to sell yet"
+          }
+        >
+          <Sparkles size={12} />
+          Clean{estReward > 0 ? ` (+$${estReward})` : ""}
         </button>
         <button
           onClick={() => change(0.25)}

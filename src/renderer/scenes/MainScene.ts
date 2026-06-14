@@ -1,6 +1,7 @@
 import Phaser from "phaser";
 import { useAquariumStore } from "@/store/aquariumStore";
 import { FISH_SPECIES, PLANT_SPECIES } from "@/simulation/species";
+import { dirtIndex } from "@/simulation/engine";
 import type { Fish, Plant, Equipment } from "@/simulation/types";
 import { SPRITE_REGISTRY, FISH_SPRITE_KEYS, type SpriteEntry } from "../assets";
 
@@ -41,6 +42,8 @@ export class MainScene extends Phaser.Scene {
   private lightRays!: Phaser.GameObjects.Graphics;
   private glassFrame!: Phaser.GameObjects.Graphics;
   private rocks: Phaser.GameObjects.Image[] = [];
+  private debris?: Phaser.GameObjects.Particles.ParticleEmitter;
+  private lastCleanFx = 0;
   private elapsed = 0;
 
   constructor() {
@@ -142,8 +145,54 @@ export class MainScene extends Phaser.Scene {
       });
     }
 
+    // 11. Suspended detritus (visible only when the water is dirty)
+    this.createDebris(width, height);
+
+    this.lastCleanFx = this.getStore().cleanFx;
+
     this.syncWithStore();
     this.scale.on("resize", this.handleResize, this);
+  }
+
+  /** Floating particulate that drifts in the water; emission rate is driven
+   *  by how dirty the water is (see update()). */
+  private createDebris(width: number, height: number) {
+    this.debris?.destroy();
+    const bubbleKey = this.getTextureKey("bubble");
+    this.debris = this.add.particles(0, 0, bubbleKey, {
+      x: { min: 0, max: width },
+      y: { min: height * 0.05, max: height * 0.88 },
+      speedX: { min: -4, max: 4 },
+      speedY: { min: -3, max: 6 },
+      lifespan: 6000,
+      scale: { min: 0.35, max: 1.0 },
+      alpha: { start: 0.5, end: 0 },
+      tint: [0x7a6244, 0x6b5a3a, 0x55492f],
+      frequency: 99999, // off until update() decides otherwise
+      quantity: 1,
+    });
+    this.debris.setDepth(34);
+    this.debris.emitting = false;
+  }
+
+  /** One-shot sparkle/bubble burst across the tank when the player cleans. */
+  private spawnCleanBurst() {
+    const { width, height } = this.scale;
+    const bubbleKey = this.getTextureKey("bubble");
+    const burst = this.add.particles(0, 0, bubbleKey, {
+      x: { min: 0, max: width },
+      y: { min: height * 0.15, max: height * 0.92 },
+      speed: { min: 20, max: 90 },
+      angle: { min: 200, max: 340 },
+      lifespan: { min: 700, max: 1300 },
+      scale: { start: 1.5, end: 0 },
+      alpha: { start: 0.95, end: 0 },
+      tint: [0xa5f3fc, 0xffffff, 0xbfeefb],
+      emitting: false,
+    });
+    burst.setDepth(60);
+    burst.explode(46);
+    this.time.delayedCall(1500, () => burst.destroy());
   }
 
   private handleResize(gameSize: Phaser.Structs.Size) {
@@ -174,6 +223,9 @@ export class MainScene extends Phaser.Scene {
       v.baseY = height - subH + 2;
       v.sprite.y = v.baseY;
     }
+
+    // Rebuild debris emit zone for the new dimensions
+    this.createDebris(width, height);
   }
 
   // ──────────────── Drawing helpers ─────────────────
@@ -509,20 +561,36 @@ export class MainScene extends Phaser.Scene {
 
     const { width, height } = this.scale;
 
-    // Water tint based on turbidity
-    const turbidity = aquarium.water.turbidity;
+    // Water tint based on overall dirtiness (turbidity + low cleanliness)
+    const dirt = dirtIndex(aquarium.water);
     let tintColor = 0x0aa9c8;
     let tintAlpha = 0;
-    if (turbidity < 5) {
+    if (dirt < 8) {
       tintAlpha = 0;
-    } else if (turbidity < 15) {
-      tintColor = 0x6db66b;
-      tintAlpha = Phaser.Math.Linear(0.02, 0.18, (turbidity - 5) / 10);
+    } else if (dirt < 30) {
+      tintColor = 0x6db66b; // greenish tinge
+      tintAlpha = Phaser.Math.Linear(0.03, 0.2, (dirt - 8) / 22);
     } else {
-      tintColor = 0x6b5a3a;
-      tintAlpha = Phaser.Math.Linear(0.18, 0.42, Math.min(1, (turbidity - 15) / 40));
+      tintColor = 0x6b5a3a; // murky brown
+      tintAlpha = Phaser.Math.Linear(0.2, 0.5, Math.min(1, (dirt - 30) / 50));
     }
     this.waterOverlay.setFillStyle(tintColor, tintAlpha);
+
+    // Suspended detritus: more (and faster-emitted) the dirtier the water
+    if (this.debris) {
+      if (dirt > 6) {
+        this.debris.emitting = true;
+        this.debris.frequency = Phaser.Math.Linear(1400, 150, Math.min(1, dirt / 100));
+      } else {
+        this.debris.emitting = false;
+      }
+    }
+
+    // Clean action fired → sparkle burst
+    if (state.cleanFx !== this.lastCleanFx) {
+      this.lastCleanFx = state.cleanFx;
+      this.spawnCleanBurst();
+    }
 
     // Night overlay
     const lightEq = state.equipment.find((e) => e.type === "light" && e.active);
@@ -636,6 +704,8 @@ export class MainScene extends Phaser.Scene {
 
   shutdown() {
     this.scale.off("resize", this.handleResize, this);
+    this.debris?.destroy();
+    this.debris = undefined;
     this.fishVisuals.clear();
     this.plantVisuals.clear();
     this.equipmentVisuals.clear();

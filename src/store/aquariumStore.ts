@@ -4,6 +4,9 @@ import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import type { Aquarium, Equipment, Fish, Plant, SimulationEvent } from "@/simulation/types";
 import {
+  applyFeedLoad,
+  cleanReward,
+  cleanTankWater,
   createStarterTank,
   feedAll,
   spawnFish,
@@ -31,6 +34,9 @@ interface AquariumState {
   equipment: Equipment[];
   events: SimulationEvent[];
   cash: number;
+  /** Increments on every clean action — a transient signal the renderer
+   *  watches to spawn a "sparkle" burst. */
+  cleanFx: number;
 
   /** Replace internal state from engine tick result */
   applyTick: (data: {
@@ -45,6 +51,7 @@ interface AquariumState {
 
   feedFish: (strength?: number) => void;
   doWaterChange: (percent: number) => void;
+  cleanTank: () => void;
 
   buyFish: (species: FishSpeciesId) => void;
   removeFishById: (id: string) => void;
@@ -81,6 +88,7 @@ export const useAquariumStore = create<AquariumState>()(
         },
       ],
       cash: 250,
+      cleanFx: 0,
 
       applyTick: ({ aquarium, fish, plants, equipment, events }) =>
         set((s) => ({
@@ -100,28 +108,73 @@ export const useAquariumStore = create<AquariumState>()(
         })),
 
       feedFish: (strength = 35) =>
-        set((s) => ({
-          fish: feedAll(s.fish, strength),
-          events: [
-            mkEvent("info", `Fed ${s.fish.filter((f) => f.alive).length} fish`),
-            ...s.events,
-          ].slice(0, 80),
-        })),
+        set((s) => {
+          const { fish, waste } = feedAll(s.fish, strength);
+          const aq = s.aquariums[0];
+          const aquariums = aq
+            ? s.aquariums.map((a) =>
+                a.id === aq.id
+                  ? { ...a, water: applyFeedLoad(a.water, strength, waste) }
+                  : a
+              )
+            : s.aquariums;
+          const fedCount = s.fish.filter((f) => f.alive).length;
+          return {
+            fish,
+            aquariums,
+            events: [
+              mkEvent(
+                "info",
+                waste > 0.4
+                  ? `Fed ${fedCount} fish — leftover food is fouling the water`
+                  : `Fed ${fedCount} fish`
+              ),
+              ...s.events,
+            ].slice(0, 80),
+          };
+        }),
 
       doWaterChange: (percent) =>
         set((s) => {
           const aq = s.aquariums[0];
           if (!aq) return s;
+          const reward = cleanReward(aq.water, percent);
           const newWater = waterChange(aq.water, percent);
           return {
+            cash: s.cash + reward,
+            cleanFx: s.cleanFx + 1,
             aquariums: s.aquariums.map((a) =>
               a.id === aq.id ? { ...a, water: newWater } : a
             ),
             events: [
+              ...(reward > 0
+                ? [mkEvent("success", `Sold detritus — earned $${reward}`)]
+                : []),
               mkEvent(
                 "success",
                 `Water change ${Math.round(percent * 100)}% — toxins diluted`
               ),
+              ...s.events,
+            ].slice(0, 80),
+          };
+        }),
+
+      cleanTank: () =>
+        set((s) => {
+          const aq = s.aquariums[0];
+          if (!aq) return s;
+          const reward = cleanReward(aq.water, 1);
+          const newWater = cleanTankWater(aq.water);
+          return {
+            cash: s.cash + reward,
+            cleanFx: s.cleanFx + 1,
+            aquariums: s.aquariums.map((a) =>
+              a.id === aq.id ? { ...a, water: newWater } : a
+            ),
+            events: [
+              reward > 0
+                ? mkEvent("success", `Tank scrubbed — sold $${reward} of detritus`)
+                : mkEvent("info", "Tank scrubbed (already clean — no payout)"),
               ...s.events,
             ].slice(0, 80),
           };
