@@ -2,10 +2,19 @@
 
 import { useEffect, useState } from "react";
 import dynamic from "next/dynamic";
+import { useRouter } from "next/navigation";
 import { Smartphone } from "lucide-react";
 import { useAquariumStore } from "@/store/aquariumStore";
 import { useGameStore } from "@/store/gameStore";
 import { useAudioStore } from "@/store/audioStore";
+import {
+  getActiveId,
+  listSaves,
+  migrateLegacy,
+  readSlot,
+  setActiveId,
+} from "@/store/saveManager";
+import { useAutoSave } from "@/hooks/useAutoSave";
 import { useSimulationLoop } from "@/hooks/useSimulationLoop";
 import { useIsMobile, useRotatePrompt, useClientSettled } from "@/hooks/useIsMobile";
 import { GameLoader } from "@/components/game/GameLoader";
@@ -32,10 +41,11 @@ const MIN_LOADER_MS = 1500;
 const READY_FALLBACK_MS = 6000;
 
 export default function GamePage() {
+  const router = useRouter();
+
   // Drive the simulation tick.
   useSimulationLoop();
 
-  const aquariums = useAquariumStore((s) => s.aquariums);
   const activeAquariumId = useGameStore((s) => s.activeAquariumId);
   const setActiveAquariumId = useGameStore((s) => s.setActiveAquariumId);
   const rightPanel = useGameStore((s) => s.rightPanel);
@@ -48,7 +58,12 @@ export default function GamePage() {
   // min display time has passed, AND the mobile/rotate layout has settled.
   const [sceneReady, setSceneReady] = useState(false);
   const [minTimeElapsed, setMinTimeElapsed] = useState(false);
-  const ready = sceneReady && minTimeElapsed && settled;
+  // True once the active save slot has been loaded into the store.
+  const [hydrated, setHydrated] = useState(false);
+  const ready = sceneReady && minTimeElapsed && settled && hydrated;
+
+  // Auto-save the live store into its slot once we've hydrated one.
+  useAutoSave(hydrated);
 
   useEffect(() => {
     const minT = setTimeout(() => setMinTimeElapsed(true), MIN_LOADER_MS);
@@ -59,11 +74,41 @@ export default function GamePage() {
     };
   }, []);
 
+  // Hydrate the active save slot into the store on mount. Loading the tank from
+  // localStorage is the save layer's job; if there's no slot to load, send the
+  // player back to the lobby to create one.
   useEffect(() => {
-    if (!activeAquariumId && aquariums[0]) {
-      setActiveAquariumId(aquariums[0].id);
+    migrateLegacy(); // one-time: import a pre-#16 single-tank blob if present
+    let id = getActiveId();
+    let snap = id ? readSlot(id) : null;
+    if (!snap) {
+      // Active pointer was stale/missing — fall back to the newest slot.
+      const first = listSaves()[0];
+      if (first) {
+        id = first.id;
+        snap = readSlot(id);
+        setActiveId(id);
+      }
     }
-  }, [activeAquariumId, aquariums, setActiveAquariumId]);
+    if (snap && id) {
+      useAquariumStore.setState({
+        aquariums: snap.aquariums,
+        fish: snap.fish,
+        plants: snap.plants,
+        equipment: snap.equipment,
+        cash: snap.cash,
+        events: snap.events,
+        cleanReadyAt: snap.cleanReadyAt,
+        cleanFx: 0,
+      });
+      setActiveAquariumId(id);
+      setHydrated(true);
+    } else {
+      // No saves at all — pick/create one in the lobby.
+      router.replace("/");
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Start audio as early as possible. The normal flow already unlocked it on
   // the lobby's "Enter the tank" click; this also covers a direct reload of

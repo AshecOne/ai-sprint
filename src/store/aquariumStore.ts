@@ -1,7 +1,6 @@
 "use client";
 
 import { create } from "zustand";
-import { persist } from "zustand/middleware";
 import type { Aquarium, Equipment, Fish, Plant, SimulationEvent } from "@/simulation/types";
 import {
   applyFeedLoad,
@@ -83,9 +82,12 @@ interface AquariumState {
 
 const starter = createStarterTank();
 
+// Persistence is NOT handled here anymore. The multi-slot save layer
+// (`saveManager` + `useAutoSave`) owns localStorage now: /game hydrates the
+// active slot into this store on mount and auto-saves snapshots back. This
+// store just holds the ONE live tank. See issue #16.
 export const useAquariumStore = create<AquariumState>()(
-  persist(
-    (set, get) => ({
+  (set) => ({
       aquariums: [starter.aquarium],
       fish: starter.fish,
       plants: starter.plants,
@@ -326,41 +328,25 @@ export const useAquariumStore = create<AquariumState>()(
 
       resetTank: () => {
         const fresh = createStarterTank();
-        set({
-          aquariums: [fresh.aquarium],
-          fish: fresh.fish,
-          plants: fresh.plants,
-          equipment: fresh.equipment,
-          cash: 250,
-          cleanFx: 0,
-          cleanReadyAt: 0,
-          events: [mkEvent("success", "Tank reset to factory defaults")],
-        });
-      },
-    }),
-    {
-      name: "aquasim-aquarium",
-      // v2: nitrogen-cycle/health rebalance (#14). Tanks saved under v1 hold
-      // stale water chemistry (NH3/NO2 pinned at the old clamp, often with
-      // dead fish), which looks "frozen" under the new model — so we discard
-      // them and re-seed a fresh starter tank instead of migrating the numbers.
-      version: 2,
-      migrate: (persisted, version) => {
-        if (version < 2) {
-          const fresh = createStarterTank();
+        // Preserve the active slot's identity (id + name) so a reset rebuilds
+        // THIS tank in place rather than spawning a new slot id. The save layer
+        // keys off aquariums[0].id, so a fresh id would orphan the slot.
+        set((s) => {
+          const prev = s.aquariums[0];
+          const aquarium = prev
+            ? { ...fresh.aquarium, id: prev.id, name: prev.name }
+            : fresh.aquarium;
           return {
-            aquariums: [fresh.aquarium],
+            aquariums: [aquarium],
             fish: fresh.fish,
             plants: fresh.plants,
             equipment: fresh.equipment,
             cash: 250,
             cleanFx: 0,
             cleanReadyAt: 0,
-            events: [mkEvent("success", "AquaSim updated — starting a fresh tank.")],
+            events: [mkEvent("success", "Tank reset to factory defaults")],
           };
-        }
-        return persisted as AquariumState;
+        });
       },
-    }
-  )
+    })
 );
