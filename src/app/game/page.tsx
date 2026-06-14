@@ -14,6 +14,7 @@ import { EventLog } from "@/components/game/EventLog";
 import { ControlBar } from "@/components/game/ControlBar";
 import { PanelTabs } from "@/components/game/PanelTabs";
 import { MobileNav } from "@/components/game/MobileNav";
+import { ConfirmProvider } from "@/components/game/ConfirmProvider";
 
 // Phaser canvas is strictly client-side.
 const PhaserGame = dynamic(() => import("@/renderer/PhaserGame"), {
@@ -44,6 +45,7 @@ export default function GamePage() {
   }, [activeAquariumId, aquariums, setActiveAquariumId]);
 
   return (
+    <ConfirmProvider>
     <main className="h-screen w-screen flex flex-col overflow-hidden crt-scanlines">
       <TopBar />
 
@@ -129,5 +131,6 @@ export default function GamePage() {
         </div>
       )}
     </main>
+    </ConfirmProvider>
   );
 }
