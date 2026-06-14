@@ -493,7 +493,13 @@ export class MainScene extends Phaser.Scene {
         sprite.setDepth(15);
         if (eq.type === "light") {
           sprite.setOrigin(0.5, 0);
-          sprite.setScale(width / sprite.width * 0.95); // span tank width
+          // Span the tank width, but scale height independently so widening
+          // the fixture doesn't also stretch it into a thick chunky bar.
+          const thinHeight = Math.min(20, Math.max(10, Math.round(height * 0.045)));
+          sprite.setScale(
+            (width / sprite.width) * 0.95,
+            thinHeight / sprite.height
+          );
         } else if (eq.type === "filter") {
           sprite.setOrigin(0.5, 0);
           sprite.setScale(2.2);

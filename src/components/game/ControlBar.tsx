@@ -14,7 +14,7 @@ import {
   Home,
 } from "lucide-react";
 
-export function ControlBar() {
+export function ControlBar({ floating = false }: { floating?: boolean }) {
   const feed = useAquariumStore((s) => s.feedFish);
   const clean = useAquariumStore((s) => s.cleanTank);
   const resetTank = useAquariumStore((s) => s.resetTank);
@@ -57,7 +57,11 @@ export function ControlBar() {
 
   return (
     <div
-      className="panel flex items-center justify-between gap-3 px-3 py-2"
+      className={
+        floating
+          ? "control-floating flex items-center justify-between gap-3"
+          : "panel flex items-center justify-between gap-3 px-3 py-2"
+      }
       data-testid="control-bar"
     >
       {/* Primary actions — the two things players do most */}
@@ -67,7 +71,7 @@ export function ControlBar() {
           className="btn btn-amber btn-lg"
           data-testid="feed-fish-button"
         >
-          <Cookie size={15} />
+          <Cookie size={15} strokeWidth={2.5} />
           Feed
         </button>
         <button
@@ -83,7 +87,7 @@ export function ControlBar() {
               : "Tank is clean — nothing to sell yet"
           }
         >
-          <Sparkles size={15} />
+          <Sparkles size={15} strokeWidth={2.5} />
           {onCooldown
             ? `Clean ${cooldownLabel}`
             : `Clean${estReward > 0 ? ` (+$${estReward})` : ""}`}
@@ -98,7 +102,7 @@ export function ControlBar() {
             className="btn btn-danger"
             data-testid="remove-dead-button"
           >
-            <Trash2 size={13} />
+            <Trash2 size={13} strokeWidth={2.5} />
             Net ({dead})
           </button>
         )}
@@ -112,7 +116,7 @@ export function ControlBar() {
             aria-expanded={menuOpen}
             title="More"
           >
-            <MoreHorizontal size={16} />
+            <MoreHorizontal size={16} strokeWidth={2.5} />
           </button>
           {menuOpen && (
             <div className="hud-menu" role="menu">

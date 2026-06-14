@@ -6,6 +6,7 @@ import { Smartphone } from "lucide-react";
 import { useAquariumStore } from "@/store/aquariumStore";
 import { useGameStore } from "@/store/gameStore";
 import { useSimulationLoop } from "@/hooks/useSimulationLoop";
+import { useIsMobile } from "@/hooks/useIsMobile";
 import { TopBar } from "@/components/game/TopBar";
 import { StatsPanel } from "@/components/game/StatsPanel";
 import { ShopPanel } from "@/components/game/ShopPanel";
@@ -35,6 +36,7 @@ export default function GamePage() {
   const rightPanel = useGameStore((s) => s.rightPanel);
   const mobileView = useGameStore((s) => s.mobileView);
   const setMobileView = useGameStore((s) => s.setMobileView);
+  const isMobile = useIsMobile();
 
   useEffect(() => {
     if (!activeAquariumId && aquariums[0]) {
@@ -64,11 +66,8 @@ export default function GamePage() {
             </div>
 
             {/* Mobile: full-screen panel overlay — one window, one focus */}
-            {mobileView !== "tank" && (
-              <div
-                className="mobile-only mobile-panel"
-                data-testid="mobile-panel"
-              >
+            {isMobile && mobileView !== "tank" && (
+              <div className="mobile-panel" data-testid="mobile-panel">
                 <div className="mobile-panel__head">
                   <span className="section-title text-xs">{mobilePanelTitle}</span>
                   <button
@@ -87,27 +86,35 @@ export default function GamePage() {
                 </div>
               </div>
             )}
+
+            {/* Mobile: actions float over the tank so the aquarium can fill
+                the whole section — no separate bar eating vertical space */}
+            {isMobile && mobileView === "tank" && (
+              <div className="absolute inset-x-0 bottom-0 z-10 px-2 pb-2 pt-6 bg-gradient-to-t from-black/45 to-transparent">
+                <ControlBar floating />
+              </div>
+            )}
           </div>
 
-          {/* ControlBar: always on desktop; on mobile only while viewing the tank */}
-          <div className={mobileView === "tank" ? "" : "mobile-hidden"}>
-            <ControlBar />
-          </div>
+          {/* Desktop: standard control bar below the tank */}
+          {!isMobile && <ControlBar />}
         </section>
 
-        {/* Right: Dashboard — desktop only */}
-        <aside className="desktop-only w-[300px] lg:w-[360px] flex-col gap-3 min-h-0">
-          <PanelTabs />
-          <div className="flex-1 overflow-hidden min-h-0">
-            {rightPanel === "stats" && <StatsPanel />}
-            {rightPanel === "shop" && <ShopPanel />}
-            {rightPanel === "log" && <EventLog />}
-          </div>
-        </aside>
+        {/* Right: Dashboard sidebar — desktop only */}
+        {!isMobile && (
+          <aside className="w-[300px] lg:w-[360px] flex flex-col gap-3 min-h-0">
+            <PanelTabs />
+            <div className="flex-1 overflow-hidden min-h-0">
+              {rightPanel === "stats" && <StatsPanel />}
+              {rightPanel === "shop" && <ShopPanel />}
+              {rightPanel === "log" && <EventLog />}
+            </div>
+          </aside>
+        )}
       </div>
 
       {/* Mobile: bottom tab navigation */}
-      <MobileNav />
+      {isMobile && <MobileNav />}
 
       {/* Mobile portrait: nudge the player to rotate for a bigger tank */}
       <div className="rotate-notice" role="dialog" aria-label="Rotate your device">

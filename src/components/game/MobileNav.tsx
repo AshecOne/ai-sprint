@@ -15,7 +15,7 @@ export function MobileNav() {
   const view = useGameStore((s) => s.mobileView);
   const setView = useGameStore((s) => s.setMobileView);
   return (
-    <nav className="mobile-nav mobile-only" data-testid="mobile-nav">
+    <nav className="mobile-nav" data-testid="mobile-nav">
       {ITEMS.map(({ id, label, icon: Icon }) => {
         const active = view === id;
         return (

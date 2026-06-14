@@ -184,12 +184,12 @@ body {
   padding: 8px 14px;
   border-radius: 6px;
   font-size: 12px;
-  font-weight: 600;
+  font-weight: 700;
   letter-spacing: 0.04em;
   text-transform: uppercase;
   background: rgba(34, 211, 238, 0.12);
   color: var(--accent-cyan);
-  border: 1px solid rgba(34, 211, 238, 0.4);
+  border: 1.5px solid rgba(34, 211, 238, 0.6);
   cursor: pointer;
   transition: background 160ms ease, transform 120ms ease, box-shadow 160ms ease;
 }
@@ -212,10 +212,16 @@ body {
   min-height: 44px;
 }
 
+/* Floating controls sit over the live tank — give them more pop */
+.control-floating .btn {
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.55);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+}
+
 .btn-ghost {
   background: transparent;
-  color: var(--text-secondary);
-  border-color: var(--border-soft);
+  color: var(--text-primary);
+  border-color: var(--border-strong);
 }
 .btn-ghost:hover {
   background: rgba(255, 255, 255, 0.03);
@@ -225,21 +231,21 @@ body {
 .btn-danger {
   background: rgba(248, 113, 113, 0.1);
   color: #fca5a5;
-  border-color: rgba(248, 113, 113, 0.4);
+  border-color: rgba(248, 113, 113, 0.6);
 }
 .btn-danger:hover { background: rgba(248, 113, 113, 0.2); }
 
 .btn-amber {
   background: rgba(245, 180, 97, 0.12);
   color: #f5b461;
-  border-color: rgba(245, 180, 97, 0.4);
+  border-color: rgba(245, 180, 97, 0.65);
 }
 .btn-amber:hover { background: rgba(245, 180, 97, 0.22); }
 
 .btn-emerald {
   background: rgba(52, 211, 153, 0.12);
   color: #6ee7b7;
-  border-color: rgba(52, 211, 153, 0.4);
+  border-color: rgba(52, 211, 153, 0.65);
 }
 .btn-emerald:hover { background: rgba(52, 211, 153, 0.22); }
 
@@ -625,25 +631,18 @@ body {
 }
 
 /* ============================================================
-   Mobile vs desktop layout
-   "Mobile" = a narrow screen OR a short one (a landscape phone is
-   wide but short), so we key off height too — not just width.
-   Mobile = one window, one focus: full tank + bottom-tab navigation.
+   Mobile single-focus layout (visibility is driven in JS by
+   useIsMobile so desktop and mobile can never render at once).
+   Mobile = full tank + bottom-tab navigation; each panel is its
+   own full-screen view.
    ============================================================ */
-.desktop-only { display: flex; }
-.mobile-only { display: none !important; }
-
-@media (max-width: 767px), (max-height: 559px) {
-  .desktop-only { display: none !important; }
-  .mobile-only { display: flex !important; }
-  .mobile-hidden { display: none !important; }
-}
 
 /* Full-screen panel overlay (Stats / Shop / Log) covering the tank */
 .mobile-panel {
   position: absolute;
   inset: 0;
   z-index: 25;
+  display: flex;
   flex-direction: column;
   background: linear-gradient(180deg, rgba(13, 26, 38, 0.98), rgba(7, 16, 26, 0.98));
 }
@@ -664,6 +663,7 @@ body {
 
 /* Bottom tab bar */
 .mobile-nav {
+  display: flex;
   align-items: stretch;
   gap: 4px;
   padding: 5px 8px calc(5px + env(safe-area-inset-bottom, 0px));
