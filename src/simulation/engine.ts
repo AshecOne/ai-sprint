@@ -393,9 +393,12 @@ export const dirtIndex = (water: WaterParameters): number =>
 
 /**
  * Cash earned for cleaning, proportional to how dirty the water is.
- * Returns 0 when the tank is already clean (anti-farming).
+ * Returns 0 when the tank is already clean (anti-farming) OR when there are no
+ * living fish — the payout rewards *caring for fish*, so dirtying an empty tank
+ * with feed can't be farmed for cash, and a tank of only dead fish pays nothing.
  */
-export const cleanReward = (water: WaterParameters): number => {
+export const cleanReward = (water: WaterParameters, aliveFishCount: number): number => {
+  if (aliveFishCount <= 0) return 0;
   const d = dirtIndex(water);
   if (d <= 5) return 0;
   return Math.round(d * 0.8);

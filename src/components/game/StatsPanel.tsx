@@ -76,7 +76,9 @@ export function StatsPanel() {
             Clean payout
           </span>
           <span className="text-[11px] font-semibold tabular-nums text-emerald-300">
-            {cleanReward(water) > 0 ? `+$${cleanReward(water)}` : "—"}
+            {cleanReward(water, aliveFish.length) > 0
+              ? `+$${cleanReward(water, aliveFish.length)}`
+              : "—"}
           </span>
         </div>
       </section>
@@ -87,11 +89,15 @@ export function StatsPanel() {
           <span className="section-title">Livestock</span>
           <span className="title-eyebrow">{aliveFish.length} alive</span>
         </header>
-        <div className="grid grid-cols-3 gap-2 mb-3">
-          <KpiCard label="Health" value={`${avgHealth.toFixed(0)}%`} tone={avgHealth > 70 ? "good" : avgHealth > 40 ? "warn" : "bad"} />
-          <KpiCard label="Stress" value={`${avgStress.toFixed(0)}%`} tone={avgStress < 30 ? "good" : avgStress < 60 ? "warn" : "bad"} />
-          <KpiCard label="Hunger" value={`${avgHunger.toFixed(0)}%`} tone={avgHunger < 50 ? "good" : avgHunger < 80 ? "warn" : "bad"} />
-        </div>
+        {/* Vitals are averages over *living* fish — meaningless with none, so
+            hide the cards entirely until there's at least one fish alive. */}
+        {aliveFish.length > 0 && (
+          <div className="grid grid-cols-3 gap-2 mb-3">
+            <KpiCard label="Health" value={`${avgHealth.toFixed(0)}%`} tone={avgHealth > 70 ? "good" : avgHealth > 40 ? "warn" : "bad"} />
+            <KpiCard label="Stress" value={`${avgStress.toFixed(0)}%`} tone={avgStress < 30 ? "good" : avgStress < 60 ? "warn" : "bad"} />
+            <KpiCard label="Hunger" value={`${avgHunger.toFixed(0)}%`} tone={avgHunger < 50 ? "good" : avgHunger < 80 ? "warn" : "bad"} />
+          </div>
+        )}
         <div className="space-y-1.5" data-testid="fish-list">
           {fish.length === 0 && (
             <div className="text-xs text-slate-500 italic">No fish in tank.</div>

@@ -26,9 +26,10 @@ export function ControlBar({ floating = false }: { floating?: boolean }) {
   const resetTank = useAquariumStore((s) => s.resetTank);
   const removeDead = useAquariumStore((s) => s.removeDeadFish);
   const dead = useAquariumStore((s) => s.fish.filter((f) => !f.alive).length);
+  const aliveCount = useAquariumStore((s) => s.fish.filter((f) => f.alive).length);
   const water = useAquariumStore((s) => s.aquariums[0]?.water);
   const cleanReadyAt = useAquariumStore((s) => s.cleanReadyAt);
-  const estReward = water ? cleanReward(water) : 0;
+  const estReward = water ? cleanReward(water, aliveCount) : 0;
   const confirm = useConfirm();
   const editMode = useGameStore((s) => s.editMode);
   const setEditMode = useGameStore((s) => s.setEditMode);
@@ -106,6 +107,8 @@ export function ControlBar({ floating = false }: { floating?: boolean }) {
                 ? `Clean recharging — ready in ${cooldownLabel}`
                 : estReward > 0
                 ? `Scrub the tank and sell ~$${estReward} of detritus`
+                : aliveCount === 0
+                ? "No living fish to care for — cleaning pays nothing"
                 : "Tank is clean — nothing to sell yet"
             }
           >
