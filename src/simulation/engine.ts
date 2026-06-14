@@ -354,37 +354,32 @@ export const dirtIndex = (water: WaterParameters): number =>
 /**
  * Cash earned for cleaning, proportional to how dirty the water is.
  * Returns 0 when the tank is already clean (anti-farming).
- * @param fraction scales the reward (e.g. a 25% water change pays less).
  */
-export const cleanReward = (water: WaterParameters, fraction = 1): number => {
+export const cleanReward = (water: WaterParameters): number => {
   const d = dirtIndex(water);
   if (d <= 5) return 0;
-  return Math.round(d * 0.8 * fraction);
+  return Math.round(d * 0.8);
 };
 
-/** Scrub the tank: big cleanliness boost + turbidity drop (no chemistry reset). */
-export const cleanTankWater = (water: WaterParameters): WaterParameters => ({
-  ...water,
-  cleanliness: clamp(water.cleanliness + 40, 0, 100),
-  turbidity: clamp(water.turbidity * 0.4, 0, 100),
-});
-
-export const waterChange = (
-  water: WaterParameters,
-  percent: number
-): WaterParameters => {
-  const p = clamp(percent, 0, 1);
+/**
+ * Clean the tank — the single maintenance action. Scrubs detritus (cleanliness
+ * up, turbidity down) AND dilutes the water chemistry (ammonia/nitrite/nitrate/
+ * CO₂ down, plus a freshening nudge to oxygen/pH/temperature), like a partial
+ * water change rolled in.
+ */
+export const cleanTankWater = (water: WaterParameters): WaterParameters => {
+  const p = 0.3; // chemistry dilution, ~30% water change equivalent
   const fresh = createDefaultWater();
   return {
+    ...water,
     temperature: water.temperature * (1 - p) + fresh.temperature * p,
     ph: water.ph * (1 - p) + fresh.ph * p,
     ammonia: water.ammonia * (1 - p),
     nitrite: water.nitrite * (1 - p),
     nitrate: water.nitrate * (1 - p),
     oxygen: water.oxygen * (1 - p) + fresh.oxygen * p,
-    hardness: water.hardness * (1 - p) + fresh.hardness * p,
-    turbidity: water.turbidity * (1 - p),
-    cleanliness: clamp(water.cleanliness + p * 50, 0, 100),
     co2: water.co2 * (1 - p),
+    cleanliness: clamp(water.cleanliness + 40, 0, 100),
+    turbidity: clamp(water.turbidity * 0.4, 0, 100),
   };
 };

@@ -12,7 +12,6 @@ import {
   spawnFish,
   spawnPlant,
   uid,
-  waterChange,
 } from "@/simulation/engine";
 import type { FishSpeciesId, PlantSpeciesId, EquipmentType } from "@/simulation/types";
 import { EQUIPMENT_SPECS, FISH_SPECIES, PLANT_SPECIES } from "@/simulation/species";
@@ -55,7 +54,6 @@ interface AquariumState {
   setAquariumName: (id: string, name: string) => void;
 
   feedFish: (strength?: number) => void;
-  doWaterChange: (percent: number) => void;
   cleanTank: () => void;
 
   buyFish: (species: FishSpeciesId) => void;
@@ -140,38 +138,13 @@ export const useAquariumStore = create<AquariumState>()(
           };
         }),
 
-      doWaterChange: (percent) =>
-        set((s) => {
-          const aq = s.aquariums[0];
-          if (!aq) return s;
-          const reward = cleanReward(aq.water, percent);
-          const newWater = waterChange(aq.water, percent);
-          return {
-            cash: s.cash + reward,
-            cleanFx: s.cleanFx + 1,
-            aquariums: s.aquariums.map((a) =>
-              a.id === aq.id ? { ...a, water: newWater } : a
-            ),
-            events: [
-              ...(reward > 0
-                ? [mkEvent("success", `Sold detritus — earned $${reward}`)]
-                : []),
-              mkEvent(
-                "success",
-                `Water change ${Math.round(percent * 100)}% — toxins diluted`
-              ),
-              ...s.events,
-            ].slice(0, 80),
-          };
-        }),
-
       cleanTank: () =>
         set((s) => {
           const aq = s.aquariums[0];
           if (!aq) return s;
           // Cooldown gate — ignore clicks while still recharging.
           if (Date.now() < s.cleanReadyAt) return s;
-          const reward = cleanReward(aq.water, 1);
+          const reward = cleanReward(aq.water);
           const newWater = cleanTankWater(aq.water);
           return {
             cash: s.cash + reward,

@@ -72,7 +72,7 @@ export function StatsPanel() {
             Clean payout
           </span>
           <span className="text-[11px] font-semibold tabular-nums text-emerald-300">
-            {cleanReward(water, 1) > 0 ? `+$${cleanReward(water, 1)}` : "—"}
+            {cleanReward(water) > 0 ? `+$${cleanReward(water)}` : "—"}
           </span>
         </div>
       </section>

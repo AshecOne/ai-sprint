@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useAquariumStore } from "@/store/aquariumStore";
 import { useGameStore } from "@/store/gameStore";
 import { cleanReward } from "@/simulation/engine";
-import { Pause, Play, FastForward, Droplets, Cookie, RefreshCw, Trash2, Sparkles } from "lucide-react";
+import { Pause, Play, FastForward, Cookie, RefreshCw, Trash2, Sparkles } from "lucide-react";
 
 export function ControlBar() {
   const paused = useGameStore((s) => s.paused);
@@ -12,14 +12,13 @@ export function ControlBar() {
   const speed = useGameStore((s) => s.speed);
   const setSpeed = useGameStore((s) => s.setSpeed);
   const feed = useAquariumStore((s) => s.feedFish);
-  const change = useAquariumStore((s) => s.doWaterChange);
   const clean = useAquariumStore((s) => s.cleanTank);
   const resetTank = useAquariumStore((s) => s.resetTank);
   const removeDead = useAquariumStore((s) => s.removeDeadFish);
   const dead = useAquariumStore((s) => s.fish.filter((f) => !f.alive).length);
   const water = useAquariumStore((s) => s.aquariums[0]?.water);
   const cleanReadyAt = useAquariumStore((s) => s.cleanReadyAt);
-  const estReward = water ? cleanReward(water, 1) : 0;
+  const estReward = water ? cleanReward(water) : 0;
 
   // Tick once a second so the cooldown countdown stays live.
   const [now, setNow] = useState(() => Date.now());
@@ -89,21 +88,6 @@ export function ControlBar() {
           {onCooldown
             ? `Clean ${cooldownLabel}`
             : `Clean${estReward > 0 ? ` (+$${estReward})` : ""}`}
-        </button>
-        <button
-          onClick={() => change(0.25)}
-          className="btn"
-          data-testid="water-change-25"
-        >
-          <Droplets size={12} />
-          Water 25%
-        </button>
-        <button
-          onClick={() => change(0.5)}
-          className="btn btn-ghost"
-          data-testid="water-change-50"
-        >
-          50%
         </button>
         {dead > 0 && (
           <button
