@@ -661,6 +661,14 @@ body {
   padding-bottom: calc(10px + env(safe-area-inset-bottom, 0px));
 }
 
+/* App shell height. `100dvh` tracks the *visible* viewport, so the bottom
+   nav isn't pushed under the browser's address/gesture bar (the main cause
+   of MobileNav getting clipped). Falls back to `100vh` on old browsers. */
+.game-shell {
+  height: 100vh;
+  height: 100dvh;
+}
+
 /* Bottom tab bar */
 .mobile-nav {
   display: flex;

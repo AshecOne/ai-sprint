@@ -3,10 +3,11 @@
 import Link from "next/link";
 import { Play } from "lucide-react";
 import { PixelFish, PixelPlant } from "@/components/game/PixelCreatures";
+import { requestAppFullscreen } from "@/hooks/useFullscreen";
 
 export default function HomePage() {
   return (
-    <main className="lobby relative h-screen w-screen flex flex-col items-center justify-center px-6 crt-scanlines overflow-hidden">
+    <main className="lobby game-shell relative w-screen flex flex-col items-center justify-center px-6 crt-scanlines overflow-hidden">
       <LobbyBackground />
 
       <div className="relative z-10 flex flex-col items-center text-center">
@@ -23,6 +24,12 @@ export default function HomePage() {
           href="/game"
           className="btn-play"
           data-testid="enter-tank-button"
+          onClick={() => {
+            // Fire inside the click (still a user gesture) so the browser
+            // honours the request; SPA nav keeps the same document so
+            // fullscreen carries into /game. Best-effort: no-op if unsupported.
+            void requestAppFullscreen();
+          }}
         >
           <Play size={22} fill="currentColor" />
           Enter the tank
