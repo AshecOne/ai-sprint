@@ -1,92 +1,120 @@
 "use client";
 
 import Link from "next/link";
-import { Droplets, Fish, Sparkles, Play } from "lucide-react";
+import { Play } from "lucide-react";
 
 export default function HomePage() {
   return (
-    <main className="h-screen w-screen flex flex-col items-center justify-center px-6 crt-scanlines overflow-hidden">
-      <div className="max-w-3xl w-full">
-        <div className="text-center mb-10">
-          <div className="title-eyebrow mb-3">// AQUASIM v0.3 — pixel ecology</div>
-          <h1
-            className="font-display text-3xl md:text-5xl text-cyan-300 leading-tight mb-4"
-            data-testid="landing-title"
-          >
-            Run a living
-            <br />
-            <span className="text-amber-300">pixel aquarium.</span>
-          </h1>
-          <p className="text-slate-400 max-w-xl mx-auto text-sm md:text-base">
-            A real-time aquarium simulator with fish behaviour, water chemistry,
-            plants, and equipment management. Built on Next.js 16 + Phaser 4 +
-            Zustand.
-          </p>
-        </div>
+    <main className="lobby relative h-screen w-screen flex flex-col items-center justify-center px-6 crt-scanlines overflow-hidden">
+      <LobbyBackground />
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-10">
-          <FeatureCard
-            icon={<Droplets size={20} />}
-            title="Water Chemistry"
-            description="Ammonia, nitrite, nitrate, pH, O₂ and CO₂ all tick in real time."
-          />
-          <FeatureCard
-            icon={<Fish size={20} />}
-            title="Fish Behaviour"
-            description="7 species with stress, hunger, shoaling and life cycle."
-          />
-          <FeatureCard
-            icon={<Sparkles size={20} />}
-            title="Pixel Art Tank"
-            description="Phaser 4 renderer with bubbles, plants sway, day/night cycle."
-          />
-        </div>
+      <div className="relative z-10 flex flex-col items-center text-center">
+        <div className="title-eyebrow mb-4">PIXEL AQUARIUM SIM</div>
+        <h1
+          className="font-display text-4xl sm:text-6xl md:text-7xl leading-tight mb-10 lobby-title"
+          data-testid="landing-title"
+        >
+          <span className="text-cyan-300">AQUA</span>
+          <span className="text-amber-300">SIM</span>
+        </h1>
 
-        <div className="flex items-center justify-center gap-3">
-          <Link
-            href="/game"
-            className="btn"
-            data-testid="enter-tank-button"
-          >
-            <Play size={14} />
-            Enter the tank
-          </Link>
-          <a
-            href="https://phaser.io/news/2026/04/phaser-v4-final"
-            target="_blank"
-            rel="noreferrer"
-            className="btn btn-ghost"
-            data-testid="docs-link"
-          >
-            Phaser 4 release notes
-          </a>
-        </div>
+        <Link
+          href="/game"
+          className="btn-play"
+          data-testid="enter-tank-button"
+        >
+          <Play size={22} fill="currentColor" />
+          Enter the tank
+        </Link>
 
-        <div className="mt-12 text-center text-xs text-slate-500">
-          <span className="blink-dot" /> &nbsp;Engine online •
-          {" "}<span className="text-cyan-400">/api/health</span>
-        </div>
+        <div className="lobby-hint mt-8">▸ Press to dive in</div>
       </div>
     </main>
   );
 }
 
-function FeatureCard({
-  icon,
-  title,
-  description,
+function LobbyBackground() {
+  return (
+    <div className="lobby-bg" aria-hidden="true">
+      {/* sunbeams / water tint */}
+      <div className="lobby-water" />
+
+      {/* swimming fish */}
+      <PixelFish className="lobby-fish lobby-fish--1" color="#f5b461" belly="#fb7185" />
+      <PixelFish className="lobby-fish lobby-fish--2" color="#22d3ee" belly="#a5f3fc" />
+      <PixelFish className="lobby-fish lobby-fish--3" color="#a3e635" belly="#ecfeff" />
+      <PixelFish className="lobby-fish lobby-fish--4" color="#38bdf8" belly="#a5f3fc" />
+
+      {/* rising bubbles */}
+      <span className="lobby-bubble lobby-bubble--1" />
+      <span className="lobby-bubble lobby-bubble--2" />
+      <span className="lobby-bubble lobby-bubble--3" />
+      <span className="lobby-bubble lobby-bubble--4" />
+      <span className="lobby-bubble lobby-bubble--5" />
+      <span className="lobby-bubble lobby-bubble--6" />
+
+      {/* swaying plants + substrate */}
+      <div className="lobby-floor">
+        <PixelPlant className="lobby-plant lobby-plant--1" />
+        <PixelPlant className="lobby-plant lobby-plant--2" />
+        <PixelPlant className="lobby-plant lobby-plant--3" />
+        <PixelPlant className="lobby-plant lobby-plant--4" />
+      </div>
+    </div>
+  );
+}
+
+/** Tiny pixel-art fish drawn with crisp <rect>s on a low-res viewBox. */
+function PixelFish({
+  className,
+  color,
+  belly,
 }: {
-  icon: React.ReactNode;
-  title: string;
-  description: string;
+  className?: string;
+  color: string;
+  belly: string;
 }) {
   return (
-    <div className="panel-glass p-4">
-      <div className="flex items-center gap-2 text-cyan-300 mb-2">
-        {icon}
-        <span className="section-title">{title}</span>
-      </div>
-      <p className="text-slate-400 text-xs leading-relaxed">{description}</p>
-    </div>
+    <svg
+      className={`pixelated ${className ?? ""}`}
+      viewBox="0 0 16 10"
+      width="48"
+      height="30"
+      shapeRendering="crispEdges"
+    >
+      {/* tail */}
+      <rect x="0" y="3" width="2" height="1" fill={color} />
+      <rect x="0" y="6" width="2" height="1" fill={color} />
+      <rect x="1" y="4" width="2" height="2" fill={color} />
+      {/* body */}
+      <rect x="3" y="3" width="8" height="4" fill={color} />
+      <rect x="4" y="2" width="6" height="1" fill={color} />
+      <rect x="4" y="7" width="6" height="1" fill={color} />
+      <rect x="11" y="4" width="2" height="2" fill={color} />
+      {/* belly highlight */}
+      <rect x="4" y="5" width="6" height="2" fill={belly} opacity="0.55" />
+      {/* eye */}
+      <rect x="10" y="4" width="1" height="1" fill="#061018" />
+    </svg>
+  );
+}
+
+/** Simple pixel seaweed; sway handled in CSS. */
+function PixelPlant({ className }: { className?: string }) {
+  return (
+    <svg
+      className={`pixelated ${className ?? ""}`}
+      viewBox="0 0 8 24"
+      width="24"
+      height="72"
+      shapeRendering="crispEdges"
+    >
+      <rect x="3" y="2" width="2" height="22" fill="#2f7d4f" />
+      <rect x="1" y="6" width="2" height="2" fill="#3aa15f" />
+      <rect x="5" y="10" width="2" height="2" fill="#3aa15f" />
+      <rect x="1" y="14" width="2" height="2" fill="#2f7d4f" />
+      <rect x="5" y="18" width="2" height="2" fill="#2f7d4f" />
+      <rect x="3" y="0" width="2" height="2" fill="#3aa15f" />
+    </svg>
   );
 }
