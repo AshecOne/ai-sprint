@@ -47,7 +47,8 @@ export function StatsPanel() {
       : 0;
 
   return (
-    <div className="h-full overflow-y-auto pr-1 space-y-3" data-testid="stats-panel">
+    <div className="@container h-full overflow-y-auto pr-1" data-testid="stats-panel">
+      <div className="grid grid-cols-1 @2xl:grid-cols-2 gap-3 items-start">
       {/* Water chemistry card */}
       <section className="panel p-3">
         <header className="flex items-center justify-between mb-2">
@@ -77,6 +78,7 @@ export function StatsPanel() {
         </div>
       </section>
 
+      <div className="space-y-3">
       {/* Livestock vitals */}
       <section className="panel p-3">
         <header className="flex items-center justify-between mb-2">
@@ -131,7 +133,7 @@ export function StatsPanel() {
             <div
               key={e.id}
               data-testid={`equipment-row-${e.id}`}
-              className="px-2 py-2 rounded-md bg-white/[0.02] border border-white/5"
+              className="px-2.5 py-2 rounded-md bg-white/[0.03]"
             >
               <div className="flex items-center justify-between mb-1.5">
                 <span className="text-xs uppercase tracking-wider text-slate-200">
@@ -169,6 +171,8 @@ export function StatsPanel() {
           ))}
         </div>
       </section>
+      </div>
+      </div>
     </div>
   );
 }
@@ -202,9 +206,9 @@ function ParamRow({ icon, label, value, bar, tone }: ParamRowProps) {
       : "bar bar-bad";
   const pct = Math.max(2, Math.min(100, bar * 100));
   return (
-    <div className="py-1 grid grid-cols-[14px_60px_1fr_70px] items-center gap-2">
+    <div className="py-1 grid grid-cols-[14px_82px_1fr_62px] items-center gap-2">
       <span className="text-slate-500">{icon}</span>
-      <span className="text-[10px] uppercase tracking-wider text-slate-400">
+      <span className="text-[10px] uppercase tracking-wide text-slate-400 truncate">
         {label}
       </span>
       <div className={barClass}>

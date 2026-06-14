@@ -332,6 +332,12 @@ body {
 
 .tank-container canvas { display: block; }
 
+/* Mobile full-bleed: drop the rounded frame so the tank fills the screen */
+.tank-container--bleed {
+  border-radius: 0;
+  border: 0;
+}
+
 .blink-dot {
   display: inline-block;
   width: 6px;
@@ -583,23 +589,21 @@ body {
 
 /* ============================================================
    Rotate-to-landscape prompt (mobile portrait only)
+   Visibility is gated in JS (useRotatePrompt) so it is never present in
+   the DOM on desktop — no flash from CSS load timing.
    ============================================================ */
-.rotate-notice { display: none; }
-
-@media (max-width: 860px) and (orientation: portrait) {
-  .rotate-notice {
-    display: flex;
-    position: fixed;
-    inset: 0;
-    z-index: 100;
-    align-items: center;
-    justify-content: center;
-    padding: 32px;
-    text-align: center;
-    background:
-      radial-gradient(ellipse at 50% -10%, rgba(94, 231, 247, 0.16), transparent 55%),
-      linear-gradient(180deg, #062436 0%, #04141f 55%, #020c14 100%);
-  }
+.rotate-notice {
+  display: flex;
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  align-items: center;
+  justify-content: center;
+  padding: 32px;
+  text-align: center;
+  background:
+    radial-gradient(ellipse at 50% -10%, rgba(94, 231, 247, 0.16), transparent 55%),
+    linear-gradient(180deg, #062436 0%, #04141f 55%, #020c14 100%);
 }
 .rotate-notice__inner {
   display: flex;

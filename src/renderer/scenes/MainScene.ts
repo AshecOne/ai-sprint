@@ -45,6 +45,9 @@ export class MainScene extends Phaser.Scene {
   private debris?: Phaser.GameObjects.Particles.ParticleEmitter;
   private lastCleanFx = 0;
   private elapsed = 0;
+  // Track the last canvas size so we can re-scale relative positions on resize.
+  private lastWidth = 0;
+  private lastHeight = 0;
 
   constructor() {
     super({ key: "MainScene" });
@@ -149,6 +152,8 @@ export class MainScene extends Phaser.Scene {
     this.createDebris(width, height);
 
     this.lastCleanFx = this.getStore().cleanFx;
+    this.lastWidth = width;
+    this.lastHeight = height;
 
     this.syncWithStore();
     this.scale.on("resize", this.handleResize, this);
@@ -224,8 +229,62 @@ export class MainScene extends Phaser.Scene {
       v.sprite.y = v.baseY;
     }
 
+    // Re-scale fish positions so they keep their relative spot in the tank
+    // instead of jumping to the corner / clipping off-screen.
+    if (this.lastWidth > 0 && this.lastHeight > 0) {
+      const rx = width / this.lastWidth;
+      const ry = height / this.lastHeight;
+      for (const [, v] of this.fishVisuals) {
+        v.sprite.x *= rx;
+        v.sprite.y *= ry;
+      }
+    }
+
+    // Re-layout equipment (light bar span, substrate-anchored stones, etc.)
+    const equipment = this.getStore().equipment;
+    for (const eq of equipment) {
+      const v = this.equipmentVisuals.get(eq.id);
+      if (!v) continue;
+      this.layoutEquipmentSprite(v.sprite, eq, width, height);
+      v.emitter?.setPosition(v.sprite.x, v.sprite.y - 8);
+    }
+
     // Rebuild debris emit zone for the new dimensions
     this.createDebris(width, height);
+
+    this.lastWidth = width;
+    this.lastHeight = height;
+  }
+
+  /** Position & scale an equipment sprite for the current tank size. Shared by
+   *  initial creation and resize so both stay in sync. */
+  private layoutEquipmentSprite(
+    sprite: Phaser.GameObjects.Image,
+    eq: Equipment,
+    width: number,
+    height: number
+  ) {
+    if (eq.type === "light") {
+      sprite.setOrigin(0.5, 0);
+      sprite.setPosition(eq.x * width, eq.y * height);
+      // Span the tank width, but keep the fixture thin regardless of height.
+      const thinHeight = Math.min(20, Math.max(10, Math.round(height * 0.045)));
+      sprite.setScale((width / sprite.width) * 0.95, thinHeight / sprite.height);
+    } else if (eq.type === "filter") {
+      sprite.setOrigin(0.5, 0);
+      sprite.setPosition(eq.x * width, eq.y * height);
+      sprite.setScale(2.2);
+    } else if (eq.type === "heater") {
+      sprite.setOrigin(0.5, 0.5);
+      sprite.setPosition(eq.x * width, eq.y * height);
+      sprite.setScale(2.2);
+    } else {
+      // Air stone / CO2 sit on the substrate.
+      sprite.setOrigin(0.5, 1);
+      sprite.setScale(2);
+      const subH = Math.max(40, Math.round(height * SUBSTRATE_RATIO));
+      sprite.setPosition(eq.x * width, height - subH + 4);
+    }
   }
 
   // ──────────────── Drawing helpers ─────────────────
@@ -491,28 +550,7 @@ export class MainScene extends Phaser.Scene {
         const texKey = this.getTextureKey(baseKey);
         const sprite = this.add.image(eq.x * width, eq.y * height, texKey);
         sprite.setDepth(15);
-        if (eq.type === "light") {
-          sprite.setOrigin(0.5, 0);
-          // Span the tank width, but scale height independently so widening
-          // the fixture doesn't also stretch it into a thick chunky bar.
-          const thinHeight = Math.min(20, Math.max(10, Math.round(height * 0.045)));
-          sprite.setScale(
-            (width / sprite.width) * 0.95,
-            thinHeight / sprite.height
-          );
-        } else if (eq.type === "filter") {
-          sprite.setOrigin(0.5, 0);
-          sprite.setScale(2.2);
-        } else if (eq.type === "heater") {
-          sprite.setOrigin(0.5, 0.5);
-          sprite.setScale(2.2);
-        } else {
-          sprite.setOrigin(0.5, 1);
-          sprite.setScale(2);
-          // Air stone / CO2 sit on substrate
-          const subH = Math.max(40, Math.round(height * SUBSTRATE_RATIO));
-          sprite.y = height - subH + 4;
-        }
+        this.layoutEquipmentSprite(sprite, eq, width, height);
         visual = { sprite };
         this.equipmentVisuals.set(eq.id, visual);
       }
