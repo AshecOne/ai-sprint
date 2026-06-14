@@ -40,7 +40,7 @@ export default function HomePage() {
       <main className="lobby game-shell relative w-screen flex flex-col items-center justify-center px-6 crt-scanlines overflow-hidden">
         <LobbyBackground />
 
-        <div className="relative z-10 flex flex-col items-center text-center w-full max-w-md">
+        <div className="relative z-10 flex flex-col items-center text-center w-full max-w-md sm:max-w-3xl">
           <div className="title-eyebrow mb-4">PIXEL AQUARIUM SIM</div>
           <h1
             className="font-display text-4xl sm:text-6xl md:text-7xl leading-tight mb-8 lobby-title"
@@ -129,22 +129,19 @@ function SaveManager() {
   const empty = saves.length === 0;
 
   return (
-    <div className="w-full flex flex-col items-stretch gap-3">
+    <div className="w-full flex flex-col items-center gap-3">
       {empty && !creating && (
-        <div className="panel px-5 py-6 flex flex-col items-center gap-3 text-center">
-          <Fish size={28} className="text-cyan-400" />
-          <p className="text-sm text-slate-300">
-            Belum ada akuarium. Buat yang pertama buat mulai memelihara ikan!
-          </p>
-          <button className="btn-play" onClick={startCreate} data-testid="enter-tank-button">
-            <Plus size={20} />
-            Buat Akuarium
-          </button>
-        </div>
+        <p className="text-sm text-slate-300 text-center max-w-xs">
+          Belum ada akuarium. Buat yang pertama buat mulai memelihara ikan! 🐟
+        </p>
       )}
 
-      {!empty && (
-        <ul className="flex flex-col gap-2 text-left">
+      {/* Horizontal rail so the lobby never grows tall as slots pile up —
+          compact square cards; swipe / scroll sideways for more. The inner
+          `w-max mx-auto` centres a short row but left-aligns (no clipped start)
+          once it overflows, which `justify-center` + scroll can't do. */}
+      <div className="save-row w-full overflow-x-auto pb-2">
+        <div className="flex gap-3 w-max max-w-full mx-auto px-1">
           {saves.map((slot) => (
             <SaveCard
               key={slot.id}
@@ -157,53 +154,57 @@ function SaveManager() {
               onDelete={() => handleDelete(slot)}
             />
           ))}
-        </ul>
-      )}
 
-      {creating ? (
-        <div className="panel px-4 py-3 flex flex-col gap-2 text-left">
-          <label className="text-[10px] uppercase tracking-widest text-cyan-300">
-            Nama akuarium
-          </label>
-          <div className="flex items-center gap-2">
-            <input
-              autoFocus
-              value={newName}
-              maxLength={30}
-              onChange={(e) => setNewName(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") handleCreate();
-                else if (e.key === "Escape") setCreating(false);
-              }}
-              placeholder="Akuarium Saya"
-              data-testid="new-save-name-input"
-              className="flex-1 min-w-0 bg-slate-900/60 border border-cyan-400/40 rounded px-2 py-1.5 text-sm text-slate-100 outline-none focus:border-cyan-300"
-            />
+          {creating ? (
+            <div className="save-card panel shrink-0 w-44 flex flex-col gap-2 p-3 text-left snap-start">
+              <label className="text-[9px] uppercase tracking-widest text-cyan-300">
+                Nama akuarium
+              </label>
+              <input
+                autoFocus
+                value={newName}
+                maxLength={30}
+                onChange={(e) => setNewName(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") handleCreate();
+                  else if (e.key === "Escape") setCreating(false);
+                }}
+                placeholder="Akuarium Saya"
+                data-testid="new-save-name-input"
+                className="w-full min-w-0 bg-slate-900/60 border border-cyan-400/40 rounded px-2 py-1.5 text-sm text-slate-100 outline-none focus:border-cyan-300"
+              />
+              <div className="flex items-center gap-2 mt-auto">
+                <button
+                  className="btn btn-emerald flex-1 justify-center"
+                  onClick={handleCreate}
+                  data-testid="confirm-create-save"
+                >
+                  <Play size={15} fill="currentColor" />
+                  Mulai
+                </button>
+                <button
+                  className="btn btn-ghost shrink-0"
+                  onClick={() => setCreating(false)}
+                  aria-label="Batal buat akuarium"
+                >
+                  <X size={15} />
+                </button>
+              </div>
+            </div>
+          ) : (
             <button
-              className="btn btn-emerald shrink-0"
-              onClick={handleCreate}
-              data-testid="confirm-create-save"
+              onClick={startCreate}
+              data-testid="enter-tank-button"
+              className="save-card save-card--new shrink-0 w-40 flex flex-col items-center justify-center gap-2 snap-start text-cyan-300 hover:text-cyan-200"
             >
-              <Play size={16} fill="currentColor" />
-              Mulai
+              <Plus size={26} />
+              <span className="text-xs uppercase tracking-widest">
+                {empty ? "Buat Akuarium" : "Buat baru"}
+              </span>
             </button>
-            <button
-              className="btn btn-ghost shrink-0"
-              onClick={() => setCreating(false)}
-              aria-label="Batal buat akuarium"
-            >
-              <X size={16} />
-            </button>
-          </div>
+          )}
         </div>
-      ) : (
-        !empty && (
-          <button className="btn shrink-0 justify-center" onClick={startCreate}>
-            <Plus size={16} />
-            Buat akuarium baru
-          </button>
-        )
-      )}
+      </div>
     </div>
   );
 }
@@ -234,7 +235,7 @@ function SaveCard({
 
   if (editing) {
     return (
-      <li className="panel px-3 py-2.5 flex items-center gap-2">
+      <div className="save-card panel shrink-0 w-44 flex flex-col gap-2 p-3 snap-start">
         <input
           autoFocus
           value={draft}
@@ -246,71 +247,74 @@ function SaveCard({
           }}
           onBlur={commit}
           data-testid={`rename-input-${slot.id}`}
-          className="flex-1 min-w-0 bg-slate-900/60 border border-cyan-400/40 rounded px-2 py-1 text-sm text-slate-100 outline-none focus:border-cyan-300"
+          className="w-full min-w-0 bg-slate-900/60 border border-cyan-400/40 rounded px-2 py-1.5 text-sm text-slate-100 outline-none focus:border-cyan-300"
         />
         {/* onMouseDown (not onClick) so it fires before the input's onBlur commit. */}
-        <button
-          onMouseDown={(e) => {
-            e.preventDefault();
-            commit();
-          }}
-          aria-label="Simpan nama"
-          className="text-emerald-400 hover:text-emerald-300"
-        >
-          <Check size={16} />
-        </button>
-        <button
-          onMouseDown={(e) => {
-            e.preventDefault();
-            cancel();
-          }}
-          aria-label="Batal ganti nama"
-          className="text-slate-500 hover:text-slate-300"
-        >
-          <X size={16} />
-        </button>
-      </li>
+        <div className="flex items-center justify-end gap-3 mt-auto">
+          <button
+            onMouseDown={(e) => {
+              e.preventDefault();
+              commit();
+            }}
+            aria-label="Simpan nama"
+            className="text-emerald-400 hover:text-emerald-300"
+          >
+            <Check size={18} />
+          </button>
+          <button
+            onMouseDown={(e) => {
+              e.preventDefault();
+              cancel();
+            }}
+            aria-label="Batal ganti nama"
+            className="text-slate-500 hover:text-slate-300"
+          >
+            <X size={18} />
+          </button>
+        </div>
+      </div>
     );
   }
 
   return (
-    <li className="panel pl-3 pr-2 py-2 flex items-center gap-2">
+    <div className="save-card panel shrink-0 w-40 flex flex-col overflow-hidden snap-start">
       <button
         onClick={onLoad}
         data-testid={`load-save-${slot.id}`}
-        className="flex-1 min-w-0 flex items-center gap-3 text-left group"
+        className="flex-1 flex flex-col items-center gap-1.5 px-3 pt-3 pb-2 text-center group min-w-0"
       >
-        <span className="grid place-items-center w-8 h-8 rounded bg-cyan-500/10 text-cyan-300 shrink-0">
-          <Fish size={16} />
+        <span className="grid place-items-center w-10 h-10 rounded-lg bg-cyan-500/10 text-cyan-300 shrink-0">
+          <Fish size={20} />
         </span>
-        <span className="min-w-0">
-          <span className="block truncate text-sm text-slate-100 group-hover:text-cyan-200">
-            {slot.name}
-          </span>
-          <span className="block text-[10px] text-slate-400">
-            {slot.fishCount} ikan · {timeAgo(slot.updatedAt)}
-          </span>
+        <span className="w-full truncate text-sm text-slate-100 group-hover:text-cyan-200">
+          {slot.name}
+        </span>
+        <span className="text-[10px] text-slate-400 leading-tight">
+          {slot.fishCount} ikan · {timeAgo(slot.updatedAt)}
         </span>
       </button>
-      <button
-        onClick={() => {
-          setDraft(slot.name);
-          setEditing(true);
-        }}
-        aria-label={`Ganti nama ${slot.name}`}
-        className="p-1.5 rounded text-slate-400 hover:text-cyan-300 hover:bg-white/5"
-      >
-        <Pencil size={15} />
-      </button>
-      <button
-        onClick={onDelete}
-        aria-label={`Hapus ${slot.name}`}
-        data-testid={`delete-save-${slot.id}`}
-        className="p-1.5 rounded text-slate-400 hover:text-red-400 hover:bg-red-500/10"
-      >
-        <Trash2 size={15} />
-      </button>
-    </li>
+      <div className="flex items-stretch border-t border-white/5 text-slate-400">
+        <button
+          onClick={() => {
+            setDraft(slot.name);
+            setEditing(true);
+          }}
+          aria-label={`Ganti nama ${slot.name}`}
+          className="flex-1 grid place-items-center py-1.5 hover:text-cyan-300 hover:bg-white/5"
+        >
+          <Pencil size={14} />
+        </button>
+        <span className="w-px bg-white/5" />
+        <button
+          onClick={onDelete}
+          aria-label={`Hapus ${slot.name}`}
+          data-testid={`delete-save-${slot.id}`}
+          className="flex-1 grid place-items-center py-1.5 hover:text-red-400 hover:bg-red-500/10"
+        >
+          <Trash2 size={14} />
+        </button>
+      </div>
+    </div>
   );
 }
 
