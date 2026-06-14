@@ -14,7 +14,6 @@ import { EventLog } from "@/components/game/EventLog";
 import { ControlBar } from "@/components/game/ControlBar";
 import { PanelTabs } from "@/components/game/PanelTabs";
 import { MobileNav } from "@/components/game/MobileNav";
-import { X } from "lucide-react";
 
 // Phaser canvas is strictly client-side.
 const PhaserGame = dynamic(() => import("@/renderer/PhaserGame"), {
@@ -35,7 +34,6 @@ export default function GamePage() {
   const setActiveAquariumId = useGameStore((s) => s.setActiveAquariumId);
   const rightPanel = useGameStore((s) => s.rightPanel);
   const mobileView = useGameStore((s) => s.mobileView);
-  const setMobileView = useGameStore((s) => s.setMobileView);
   const isMobile = useIsMobile();
   const showRotatePrompt = useRotatePrompt();
 
@@ -44,9 +42,6 @@ export default function GamePage() {
       setActiveAquariumId(aquariums[0].id);
     }
   }, [activeAquariumId, aquariums, setActiveAquariumId]);
-
-  const mobilePanelTitle =
-    mobileView === "stats" ? "Stats" : mobileView === "shop" ? "Shop" : "Log";
 
   return (
     <main className="h-screen w-screen flex flex-col overflow-hidden crt-scanlines">
@@ -76,20 +71,12 @@ export default function GamePage() {
               Live · Tank #1
             </div>
 
-            {/* Mobile: full-screen panel overlay — one window, one focus */}
+            {/* Mobile: full-screen panel overlay — one window, one focus.
+                No header: the bottom nav already labels the view and the
+                "Tank" tab is the way back, so a title bar + close button
+                would just be redundant chrome. */}
             {isMobile && mobileView !== "tank" && (
               <div className="mobile-panel" data-testid="mobile-panel">
-                <div className="mobile-panel__head">
-                  <span className="section-title text-xs">{mobilePanelTitle}</span>
-                  <button
-                    onClick={() => setMobileView("tank")}
-                    className="btn btn-ghost py-1 px-2"
-                    data-testid="mobile-panel-close"
-                    aria-label="Back to tank"
-                  >
-                    <X size={14} />
-                  </button>
-                </div>
                 <div className="mobile-panel__body">
                   {mobileView === "stats" && <StatsPanel />}
                   {mobileView === "shop" && <ShopPanel />}

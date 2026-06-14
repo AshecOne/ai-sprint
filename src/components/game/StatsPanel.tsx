@@ -47,8 +47,7 @@ export function StatsPanel() {
       : 0;
 
   return (
-    <div className="@container h-full overflow-y-auto pr-1" data-testid="stats-panel">
-      <div className="grid grid-cols-1 @2xl:grid-cols-2 gap-3 items-start">
+    <div className="h-full overflow-y-auto pr-1 space-y-3" data-testid="stats-panel">
       {/* Water chemistry card */}
       <section className="panel p-3">
         <header className="flex items-center justify-between mb-2">
@@ -78,7 +77,6 @@ export function StatsPanel() {
         </div>
       </section>
 
-      <div className="space-y-3">
       {/* Livestock vitals */}
       <section className="panel p-3">
         <header className="flex items-center justify-between mb-2">
@@ -171,8 +169,6 @@ export function StatsPanel() {
           ))}
         </div>
       </section>
-      </div>
-      </div>
     </div>
   );
 }

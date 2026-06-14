@@ -11,8 +11,7 @@ export function ShopPanel() {
   const buyEquipment = useAquariumStore((s) => s.buyEquipment);
 
   return (
-    <div className="@container h-full overflow-y-auto pr-1" data-testid="shop-panel">
-      <div className="grid grid-cols-1 @2xl:grid-cols-2 @4xl:grid-cols-3 gap-3 items-start">
+    <div className="h-full overflow-y-auto pr-1 space-y-3" data-testid="shop-panel">
       <div className="panel p-3">
         <header className="flex items-center justify-between mb-2">
           <span className="section-title">Fish</span>
@@ -84,7 +83,6 @@ export function ShopPanel() {
             );
           })}
         </div>
-      </div>
       </div>
     </div>
   );
