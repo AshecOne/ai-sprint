@@ -2,6 +2,7 @@
 
 import { useAquariumStore } from "@/store/aquariumStore";
 import { useConfirm } from "@/components/game/ConfirmProvider";
+import { audio } from "@/audio/engine";
 import { FISH_SPECIES, PLANT_SPECIES, EQUIPMENT_SPECS } from "@/simulation/species";
 import type { FishSpeciesId, PlantSpeciesId, EquipmentType } from "@/simulation/types";
 
@@ -23,7 +24,10 @@ export function ShopPanel() {
       rememberKey: "shop-buy",
       rememberLabel: "Don't ask for purchases again",
     });
-    if (ok) buy();
+    if (ok) {
+      buy();
+      audio.play("buy");
+    }
   };
 
   return (

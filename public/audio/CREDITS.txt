@@ -1,0 +1,12 @@
+AQUASIM — audio asset credits
+=============================
+
+overworld.ogg
+  Title:   "Overworld Theme" (alternate version)
+  Author:  Louswan
+  License: CC0 1.0 (Public Domain Dedication) — no attribution required
+  Source:  https://opengameart.org/content/overworld-theme-0
+
+All sound effects (feed, clean, coin, buy, toggle, error, warning) and the
+aquarium ambient bed (water hum + bubbles) are synthesised at runtime in the
+browser via the Web Audio API — see src/audio/engine.ts. No external assets.

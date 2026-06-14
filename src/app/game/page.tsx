@@ -5,6 +5,7 @@ import dynamic from "next/dynamic";
 import { Smartphone } from "lucide-react";
 import { useAquariumStore } from "@/store/aquariumStore";
 import { useGameStore } from "@/store/gameStore";
+import { useAudioStore } from "@/store/audioStore";
 import { useSimulationLoop } from "@/hooks/useSimulationLoop";
 import { useIsMobile, useRotatePrompt, useClientSettled } from "@/hooks/useIsMobile";
 import { GameLoader } from "@/components/game/GameLoader";
@@ -62,6 +63,22 @@ export default function GamePage() {
       setActiveAquariumId(aquariums[0].id);
     }
   }, [activeAquariumId, aquariums, setActiveAquariumId]);
+
+  // Start audio as early as possible. The normal flow already unlocked it on
+  // the lobby's "Enter the tank" click; this also covers a direct reload of
+  // /game — best-effort autoplay on load, with a first-input fallback for when
+  // the browser's autoplay policy blocks the load-time attempt.
+  useEffect(() => {
+    const unlock = () => useAudioStore.getState().unlock();
+    unlock(); // best-effort autoplay on load
+    const opts = { once: true } as const;
+    window.addEventListener("pointerdown", unlock, opts);
+    window.addEventListener("keydown", unlock, opts);
+    return () => {
+      window.removeEventListener("pointerdown", unlock);
+      window.removeEventListener("keydown", unlock);
+    };
+  }, []);
 
   return (
     <ConfirmProvider>

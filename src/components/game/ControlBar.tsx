@@ -7,6 +7,7 @@ import { useGameStore } from "@/store/gameStore";
 import { useConfirm } from "@/components/game/ConfirmProvider";
 import { cleanReward } from "@/simulation/engine";
 import { useFullscreen } from "@/hooks/useFullscreen";
+import { audio } from "@/audio/engine";
 import {
   Cookie,
   RefreshCw,
@@ -74,7 +75,10 @@ export function ControlBar({ floating = false }: { floating?: boolean }) {
       {/* Primary actions — the two things players do most */}
       <div className="flex items-center gap-2">
         <button
-          onClick={() => feed(35)}
+          onClick={() => {
+            feed(35);
+            audio.play("feed");
+          }}
           className="btn btn-amber btn-lg"
           data-testid="feed-fish-button"
         >
@@ -82,7 +86,12 @@ export function ControlBar({ floating = false }: { floating?: boolean }) {
           Feed
         </button>
         <button
-          onClick={() => clean()}
+          onClick={() => {
+            clean();
+            audio.play("clean");
+            // A payout means detritus was sold — chime the coin too.
+            if (estReward > 0) audio.play("coin");
+          }}
           disabled={onCooldown}
           className={`btn btn-emerald btn-lg ${onCooldown ? "opacity-50 cursor-not-allowed" : ""}`}
           data-testid="clean-tank-button"

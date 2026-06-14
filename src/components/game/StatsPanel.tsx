@@ -4,6 +4,7 @@ import { useAquariumStore } from "@/store/aquariumStore";
 import { FISH_SPECIES } from "@/simulation/species";
 import { cleanReward } from "@/simulation/engine";
 import { PixelFace } from "./PixelFace";
+import { audio } from "@/audio/engine";
 import type { WaterParameters } from "@/simulation/types";
 import { Thermometer, Beaker, Droplet, Wind, Activity, Power } from "lucide-react";
 
@@ -137,7 +138,10 @@ export function StatsPanel() {
                   {labelOf(e.type)}
                 </span>
                 <button
-                  onClick={() => toggleEquipment(e.id)}
+                  onClick={() => {
+                    toggleEquipment(e.id);
+                    audio.play("toggle");
+                  }}
                   data-testid={`toggle-${e.type}-${e.id}`}
                   className={`flex items-center gap-1.5 px-2 py-1 rounded text-[10px] uppercase tracking-wider font-semibold ${
                     e.active
