@@ -29,11 +29,11 @@ export function TopBar() {
 
   return (
     <header
-      className="px-4 py-3 border-b border-[var(--border-soft)] flex items-center justify-between gap-4 flex-shrink-0 panel"
+      className="px-2 py-1.5 sm:px-4 sm:py-3 border-b border-[var(--border-soft)] flex items-center justify-between gap-2 sm:gap-4 flex-shrink-0 panel"
       data-testid="topbar"
     >
-      <div className="flex items-center gap-3">
-        <h1 className="font-display text-sm tracking-wider text-cyan-300">
+      <div className="flex items-center gap-2 sm:gap-3">
+        <h1 className="font-display text-[11px] sm:text-sm tracking-wider text-cyan-300">
           AQUASIM
         </h1>
         <div className="hidden md:block text-[10px] text-slate-500 uppercase tracking-widest">
@@ -41,10 +41,10 @@ export function TopBar() {
         </div>
 
         {/* Transport controls — playback lives here so the ControlBar stays action-only */}
-        <div className="flex items-center gap-2 pl-3 ml-1 border-l border-[var(--border-soft)]">
+        <div className="flex items-center gap-1.5 sm:gap-2 pl-2 sm:pl-3 ml-0.5 sm:ml-1 border-l border-[var(--border-soft)]">
           <button
             onClick={() => setPaused(!paused)}
-            className="btn py-1.5 px-3 text-[11px]"
+            className="btn py-1 px-2 sm:py-1.5 sm:px-3 text-[10px] sm:text-[11px]"
             data-testid="toggle-pause"
           >
             {paused ? <Play size={12} /> : <Pause size={12} />}
@@ -69,7 +69,7 @@ export function TopBar() {
         </div>
       </div>
 
-      <div className="flex items-center gap-3 text-xs flex-wrap justify-end">
+      <div className="flex items-center gap-1.5 sm:gap-3 text-xs flex-wrap justify-end">
         <Pill icon={<Coins size={12} />} label="Cash" value={`$${cash}`} testid="kpi-cash" tone="amber" />
         <Pill icon={<Fish size={12} />} label="Fish" value={`${aliveFish}${deadFish > 0 ? ` / -${deadFish}` : ""}`} testid="kpi-fish" tone={deadFish > 0 ? "warn" : "ok"} />
         <Pill icon={<Leaf size={12} />} label="Plants" value={`${plants.length}`} testid="kpi-plants" tone="ok" />
@@ -106,7 +106,7 @@ function Pill({
   return (
     <div
       data-testid={testid}
-      className={`flex items-center gap-2 panel-glass px-2.5 py-1.5 ${color}`}
+      className={`flex items-center gap-1.5 sm:gap-2 panel-glass px-2 py-1 sm:px-2.5 sm:py-1.5 ${color}`}
     >
       {icon}
       <span className="hidden sm:inline text-[10px] uppercase tracking-widest text-slate-400">{label}</span>

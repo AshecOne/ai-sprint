@@ -623,3 +623,76 @@ body {
   0%, 35% { transform: rotate(0deg); }
   55%, 100% { transform: rotate(-90deg); }
 }
+
+/* ============================================================
+   Mobile vs desktop layout
+   "Mobile" = a narrow screen OR a short one (a landscape phone is
+   wide but short), so we key off height too — not just width.
+   Mobile = one window, one focus: full tank + bottom-tab navigation.
+   ============================================================ */
+.desktop-only { display: flex; }
+.mobile-only { display: none !important; }
+
+@media (max-width: 767px), (max-height: 559px) {
+  .desktop-only { display: none !important; }
+  .mobile-only { display: flex !important; }
+  .mobile-hidden { display: none !important; }
+}
+
+/* Full-screen panel overlay (Stats / Shop / Log) covering the tank */
+.mobile-panel {
+  position: absolute;
+  inset: 0;
+  z-index: 25;
+  flex-direction: column;
+  background: linear-gradient(180deg, rgba(13, 26, 38, 0.98), rgba(7, 16, 26, 0.98));
+}
+.mobile-panel__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--border-soft);
+  flex-shrink: 0;
+}
+.mobile-panel__body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+/* Bottom tab bar */
+.mobile-nav {
+  align-items: stretch;
+  gap: 4px;
+  padding: 5px 8px calc(5px + env(safe-area-inset-bottom, 0px));
+  background: linear-gradient(180deg, rgba(13, 26, 38, 0.95), rgba(7, 16, 26, 0.98));
+  border-top: 1px solid var(--border-soft);
+  flex-shrink: 0;
+}
+.mobile-nav__item {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  min-height: 44px;
+  padding: 5px 4px;
+  border-radius: 8px;
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  transition: color 140ms ease, background 140ms ease;
+}
+.mobile-nav__item:hover { color: var(--text-secondary); }
+.mobile-nav__item.is-active {
+  color: var(--accent-cyan);
+  background: rgba(34, 211, 238, 0.12);
+}

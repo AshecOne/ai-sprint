@@ -12,6 +12,8 @@ import { ShopPanel } from "@/components/game/ShopPanel";
 import { EventLog } from "@/components/game/EventLog";
 import { ControlBar } from "@/components/game/ControlBar";
 import { PanelTabs } from "@/components/game/PanelTabs";
+import { MobileNav } from "@/components/game/MobileNav";
+import { X } from "lucide-react";
 
 // Phaser canvas is strictly client-side.
 const PhaserGame = dynamic(() => import("@/renderer/PhaserGame"), {
@@ -31,6 +33,8 @@ export default function GamePage() {
   const activeAquariumId = useGameStore((s) => s.activeAquariumId);
   const setActiveAquariumId = useGameStore((s) => s.setActiveAquariumId);
   const rightPanel = useGameStore((s) => s.rightPanel);
+  const mobileView = useGameStore((s) => s.mobileView);
+  const setMobileView = useGameStore((s) => s.setMobileView);
 
   useEffect(() => {
     if (!activeAquariumId && aquariums[0]) {
@@ -38,12 +42,15 @@ export default function GamePage() {
     }
   }, [activeAquariumId, aquariums, setActiveAquariumId]);
 
+  const mobilePanelTitle =
+    mobileView === "stats" ? "Stats" : mobileView === "shop" ? "Shop" : "Log";
+
   return (
     <main className="h-screen w-screen flex flex-col overflow-hidden crt-scanlines">
       <TopBar />
 
-      <div className="flex-1 flex gap-2 sm:gap-3 px-2 sm:px-3 pb-2 sm:pb-3 overflow-hidden">
-        {/* Left: Phaser canvas + control bar */}
+      <div className="flex-1 flex gap-2 sm:gap-3 px-2 sm:px-3 pb-2 sm:pb-3 overflow-hidden min-h-0">
+        {/* Left: Phaser canvas (rendered once) + control bar */}
         <section className="flex-1 flex flex-col gap-2 sm:gap-3 min-w-0">
           <div
             className="tank-container flex-1 relative overflow-hidden"
@@ -51,16 +58,45 @@ export default function GamePage() {
           >
             <PhaserGame aquariumId={activeAquariumId} />
             {/* HUD overlay */}
-            <div className="absolute top-2 left-2 z-10 panel-glass px-3 py-1.5 text-[10px] tracking-widest text-cyan-300 uppercase">
+            <div className="absolute top-2 left-2 z-10 panel-glass px-2 py-1 text-[9px] sm:text-[10px] tracking-widest text-cyan-300 uppercase">
               <span className="blink-dot mr-2" />
               Live · Tank #1
             </div>
+
+            {/* Mobile: full-screen panel overlay — one window, one focus */}
+            {mobileView !== "tank" && (
+              <div
+                className="mobile-only mobile-panel"
+                data-testid="mobile-panel"
+              >
+                <div className="mobile-panel__head">
+                  <span className="section-title text-xs">{mobilePanelTitle}</span>
+                  <button
+                    onClick={() => setMobileView("tank")}
+                    className="btn btn-ghost py-1 px-2"
+                    data-testid="mobile-panel-close"
+                    aria-label="Back to tank"
+                  >
+                    <X size={14} />
+                  </button>
+                </div>
+                <div className="mobile-panel__body">
+                  {mobileView === "stats" && <StatsPanel />}
+                  {mobileView === "shop" && <ShopPanel />}
+                  {mobileView === "log" && <EventLog />}
+                </div>
+              </div>
+            )}
           </div>
-          <ControlBar />
+
+          {/* ControlBar: always on desktop; on mobile only while viewing the tank */}
+          <div className={mobileView === "tank" ? "" : "mobile-hidden"}>
+            <ControlBar />
+          </div>
         </section>
 
-        {/* Right: Dashboard */}
-        <aside className="w-[230px] md:w-[300px] lg:w-[360px] flex flex-col gap-2 sm:gap-3 min-h-0">
+        {/* Right: Dashboard — desktop only */}
+        <aside className="desktop-only w-[300px] lg:w-[360px] flex-col gap-3 min-h-0">
           <PanelTabs />
           <div className="flex-1 overflow-hidden min-h-0">
             {rightPanel === "stats" && <StatsPanel />}
@@ -69,6 +105,9 @@ export default function GamePage() {
           </div>
         </aside>
       </div>
+
+      {/* Mobile: bottom tab navigation */}
+      <MobileNav />
 
       {/* Mobile portrait: nudge the player to rotate for a bigger tank */}
       <div className="rotate-notice" role="dialog" aria-label="Rotate your device">
