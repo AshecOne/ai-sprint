@@ -3,6 +3,7 @@
 import { useAquariumStore } from "@/store/aquariumStore";
 import { FISH_SPECIES } from "@/simulation/species";
 import { cleanReward } from "@/simulation/engine";
+import { PixelFace } from "./PixelFace";
 import type { WaterParameters } from "@/simulation/types";
 import { Thermometer, Beaker, Droplet, Wind, Activity, Power } from "lucide-react";
 
@@ -106,13 +107,11 @@ export function StatsPanel() {
                 <span className="flex-1 truncate text-slate-200">{f.name}</span>
                 <span className="text-[10px] text-slate-500">{spec.label}</span>
                 {f.alive && (
-                  <span
-                    className={`text-[10px] font-semibold tabular-nums ${
-                      f.health > 70 ? "text-emerald-300" : f.health > 40 ? "text-amber-300" : "text-red-300"
-                    }`}
-                  >
-                    {f.health.toFixed(0)}%
-                  </span>
+                  <PixelFace
+                    mood={f.health > 70 ? "good" : f.health > 40 ? "warn" : "bad"}
+                    size={14}
+                    title={`Health ${f.health.toFixed(0)}%`}
+                  />
                 )}
               </div>
             );
@@ -227,20 +226,12 @@ function ParamRow({ icon, label, value, bar, tone }: ParamRowProps) {
 
 function KpiCard({ label, value, tone }: { label: string; value: string; tone: "good" | "warn" | "bad" }) {
   return (
-    <div className={`kpi-card ${tone}`}>
+    <div className={`kpi-card ${tone}`} title={`${label} ${value}`}>
       <div className="text-[10px] tracking-widest uppercase text-slate-500">
         {label}
       </div>
-      <div
-        className={`text-lg font-bold tabular-nums ${
-          tone === "good"
-            ? "text-emerald-300"
-            : tone === "warn"
-            ? "text-amber-300"
-            : "text-red-300"
-        }`}
-      >
-        {value}
+      <div className="mt-0.5 flex justify-center">
+        <PixelFace mood={tone} size={28} title={`${label} ${value}`} />
       </div>
     </div>
   );
