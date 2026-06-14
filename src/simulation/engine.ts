@@ -202,7 +202,7 @@ export const tickSimulation = (ctx: TickContext): TickResult => {
   // and hold it in a healthy band, but nitrate still accumulates over time so
   // the player has a visible reason to do a Clean / water change. Uptake also
   // tapers as nitrate depletes, so plants never strip it to zero (and starve).
-  const uptakeFactor = water.nitrate / (water.nitrate + 12);
+  const uptakeFactor = water.nitrate / (water.nitrate + 25);
   water.nitrate = Math.max(
     0,
     water.nitrate - totalNitrateAbsorbed * 0.25 * uptakeFactor

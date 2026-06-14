@@ -295,7 +295,27 @@ export const useAquariumStore = create<AquariumState>()(
     }),
     {
       name: "aquasim-aquarium",
-      version: 1,
+      // v2: nitrogen-cycle/health rebalance (#14). Tanks saved under v1 hold
+      // stale water chemistry (NH3/NO2 pinned at the old clamp, often with
+      // dead fish), which looks "frozen" under the new model — so we discard
+      // them and re-seed a fresh starter tank instead of migrating the numbers.
+      version: 2,
+      migrate: (persisted, version) => {
+        if (version < 2) {
+          const fresh = createStarterTank();
+          return {
+            aquariums: [fresh.aquarium],
+            fish: fresh.fish,
+            plants: fresh.plants,
+            equipment: fresh.equipment,
+            cash: 250,
+            cleanFx: 0,
+            cleanReadyAt: 0,
+            events: [mkEvent("success", "AquaSim updated — starting a fresh tank.")],
+          };
+        }
+        return persisted as AquariumState;
+      },
     }
   )
 );
