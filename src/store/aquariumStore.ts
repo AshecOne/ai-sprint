@@ -52,6 +52,7 @@ interface AquariumState {
   }) => void;
 
   setAquariumName: (id: string, name: string) => void;
+  setFishName: (id: string, name: string) => void;
 
   feedFish: (strength?: number) => void;
   cleanTank: () => void;
@@ -110,6 +111,16 @@ export const useAquariumStore = create<AquariumState>()(
         set((s) => ({
           aquariums: s.aquariums.map((a) => (a.id === id ? { ...a, name } : a)),
         })),
+
+      setFishName: (id, name) =>
+        set((s) => {
+          // Trim and cap length; ignore empty so we never blank out a name.
+          const clean = name.trim().slice(0, 20);
+          if (!clean) return s;
+          return {
+            fish: s.fish.map((f) => (f.id === id ? { ...f, name: clean } : f)),
+          };
+        }),
 
       feedFish: (strength = 35) =>
         set((s) => {

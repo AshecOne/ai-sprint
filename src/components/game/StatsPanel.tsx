@@ -1,12 +1,13 @@
 "use client";
 
+import { useState } from "react";
 import { useAquariumStore } from "@/store/aquariumStore";
 import { FISH_SPECIES } from "@/simulation/species";
 import { cleanReward } from "@/simulation/engine";
 import { PixelFace } from "./PixelFace";
 import { audio } from "@/audio/engine";
-import type { WaterParameters } from "@/simulation/types";
-import { Thermometer, Beaker, Droplet, Wind, Activity, Power } from "lucide-react";
+import type { Fish, WaterParameters } from "@/simulation/types";
+import { Thermometer, Beaker, Droplet, Wind, Activity, Power, Pencil, Check, X } from "lucide-react";
 
 interface RangeOk {
   ok: boolean;
@@ -31,6 +32,7 @@ export function StatsPanel() {
   const equipment = useAquariumStore((s) => s.equipment);
   const toggleEquipment = useAquariumStore((s) => s.toggleEquipment);
   const setEquipmentPower = useAquariumStore((s) => s.setEquipmentPower);
+  const setFishName = useAquariumStore((s) => s.setFishName);
 
   if (!aquarium) return null;
   const water = aquarium.water;
@@ -94,29 +96,9 @@ export function StatsPanel() {
           {fish.length === 0 && (
             <div className="text-xs text-slate-500 italic">No fish in tank.</div>
           )}
-          {fish.map((f) => {
-            const spec = FISH_SPECIES[f.species];
-            return (
-              <div
-                key={f.id}
-                data-testid={`fish-row-${f.id}`}
-                className={`flex items-center gap-2 px-2 py-1.5 rounded text-[11px] ${
-                  f.alive ? "bg-white/[0.02]" : "bg-red-500/10 text-red-300 line-through"
-                }`}
-              >
-                <Activity size={10} className={f.alive ? "text-cyan-400" : "text-red-400"} />
-                <span className="flex-1 truncate text-slate-200">{f.name}</span>
-                <span className="text-[10px] text-slate-500">{spec.label}</span>
-                {f.alive && (
-                  <PixelFace
-                    mood={f.health > 70 ? "good" : f.health > 40 ? "warn" : "bad"}
-                    size={14}
-                    title={`Health ${f.health.toFixed(0)}%`}
-                  />
-                )}
-              </div>
-            );
-          })}
+          {fish.map((f) => (
+            <FishRow key={f.id} fish={f} onRename={setFishName} />
+          ))}
         </div>
       </section>
 
@@ -172,6 +154,90 @@ export function StatsPanel() {
           ))}
         </div>
       </section>
+    </div>
+  );
+}
+
+function FishRow({ fish: f, onRename }: { fish: Fish; onRename: (id: string, name: string) => void }) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(f.name);
+  const spec = FISH_SPECIES[f.species];
+
+  const startEdit = () => {
+    setDraft(f.name);
+    setEditing(true);
+  };
+  const commit = () => {
+    onRename(f.id, draft);
+    setEditing(false);
+  };
+  const cancel = () => {
+    setDraft(f.name);
+    setEditing(false);
+  };
+
+  return (
+    <div
+      data-testid={`fish-row-${f.id}`}
+      className={`flex items-center gap-2 px-2 py-1.5 rounded text-[11px] ${
+        f.alive ? "bg-white/[0.02]" : "bg-red-500/10 text-red-300 line-through"
+      }`}
+    >
+      <Activity size={10} className={f.alive ? "text-cyan-400" : "text-red-400"} />
+      {editing ? (
+        <>
+          <input
+            autoFocus
+            value={draft}
+            maxLength={20}
+            onChange={(e) => setDraft(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") commit();
+              else if (e.key === "Escape") cancel();
+            }}
+            onBlur={commit}
+            data-testid={`fish-name-input-${f.id}`}
+            className="flex-1 min-w-0 bg-slate-900/60 border border-cyan-400/40 rounded px-1.5 py-0.5 text-slate-100 outline-none focus:border-cyan-300"
+          />
+          <button
+            // onMouseDown (not onClick) so it fires before the input's onBlur commit.
+            onMouseDown={(e) => { e.preventDefault(); commit(); }}
+            aria-label="Save name"
+            className="text-emerald-400 hover:text-emerald-300"
+          >
+            <Check size={12} />
+          </button>
+          <button
+            onMouseDown={(e) => { e.preventDefault(); cancel(); }}
+            aria-label="Cancel rename"
+            className="text-slate-500 hover:text-slate-300"
+          >
+            <X size={12} />
+          </button>
+        </>
+      ) : (
+        <>
+          <span className="flex-1 truncate text-slate-200">{f.name}</span>
+          {f.alive && (
+            <button
+              onClick={startEdit}
+              aria-label={`Rename ${f.name}`}
+              data-testid={`fish-rename-${f.id}`}
+              className="text-slate-500 hover:text-cyan-300 shrink-0"
+            >
+              <Pencil size={11} />
+            </button>
+          )}
+          <span className="text-[10px] text-slate-500">{spec.label}</span>
+          {f.alive && (
+            <PixelFace
+              mood={f.health > 70 ? "good" : f.health > 40 ? "warn" : "bad"}
+              size={14}
+              title={`Health ${f.health.toFixed(0)}%`}
+            />
+          )}
+        </>
+      )}
     </div>
   );
 }
