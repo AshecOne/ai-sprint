@@ -1,11 +1,30 @@
 "use client";
 
+import { useEffect } from "react";
 import Link from "next/link";
 import { Play } from "lucide-react";
 import { PixelFish, PixelPlant } from "@/components/game/PixelCreatures";
 import { requestAppFullscreen } from "@/hooks/useFullscreen";
+import { useAudioStore } from "@/store/audioStore";
 
 export default function HomePage() {
+  // Try to start ambient + music the moment the lobby opens. Browsers block
+  // audio before a user gesture (autoplay policy), so this only succeeds where
+  // allowed (e.g. returning visitors); otherwise the first interaction anywhere
+  // — including the "Enter the tank" click — kicks it off. SPA nav keeps the
+  // same document, so the sound carries into /game.
+  useEffect(() => {
+    const unlock = () => useAudioStore.getState().unlock();
+    unlock(); // best-effort autoplay on load
+    const opts = { once: true } as const;
+    window.addEventListener("pointerdown", unlock, opts);
+    window.addEventListener("keydown", unlock, opts);
+    return () => {
+      window.removeEventListener("pointerdown", unlock);
+      window.removeEventListener("keydown", unlock);
+    };
+  }, []);
+
   return (
     <main className="lobby game-shell relative w-screen flex flex-col items-center justify-center px-6 crt-scanlines overflow-hidden">
       <LobbyBackground />
@@ -29,6 +48,8 @@ export default function HomePage() {
             // honours the request; SPA nav keeps the same document so
             // fullscreen carries into /game. Best-effort: no-op if unsupported.
             void requestAppFullscreen();
+            // Same gesture unlocks the AudioContext + kicks off ambient/music.
+            useAudioStore.getState().unlock();
           }}
         >
           <Play size={22} fill="currentColor" />

@@ -1,8 +1,21 @@
 "use client";
 
+import { useEffect, useRef } from "react";
 import { useGameStore } from "@/store/gameStore";
 import { useAquariumStore } from "@/store/aquariumStore";
-import { Coins, Fish, Leaf, AlertOctagon, Pause, Play } from "lucide-react";
+import { useAudioStore } from "@/store/audioStore";
+import { audio } from "@/audio/engine";
+import {
+  Coins,
+  Fish,
+  Leaf,
+  AlertOctagon,
+  Pause,
+  Play,
+  Volume2,
+  VolumeX,
+  Music,
+} from "lucide-react";
 
 export function TopBar() {
   const cash = useAquariumStore((s) => s.cash);
@@ -14,6 +27,10 @@ export function TopBar() {
   const setPaused = useGameStore((s) => s.setPaused);
   const speed = useGameStore((s) => s.speed);
   const setSpeed = useGameStore((s) => s.setSpeed);
+  const muted = useAudioStore((s) => s.muted);
+  const toggleMuted = useAudioStore((s) => s.toggleMuted);
+  const musicOn = useAudioStore((s) => s.musicOn);
+  const toggleMusic = useAudioStore((s) => s.toggleMusic);
 
   const aliveFish = fish.filter((f) => f.alive).length;
   const deadFish = fish.length - aliveFish;
@@ -26,6 +43,14 @@ export function TopBar() {
         water.turbidity > 30,
       ].filter(Boolean).length
     : 0;
+
+  // Sound the alert only when the tank tips INTO danger (count rises), so a
+  // sustained problem doesn't beep every tick.
+  const prevDanger = useRef(dangerCount);
+  useEffect(() => {
+    if (dangerCount > prevDanger.current) audio.play("warning");
+    prevDanger.current = dangerCount;
+  }, [dangerCount]);
 
   return (
     <header
@@ -65,6 +90,36 @@ export function TopBar() {
                 {s}×
               </button>
             ))}
+          </div>
+
+          {/* Audio controls — mute + background music toggle */}
+          <div className="flex items-center gap-1 panel-glass p-1 rounded-md">
+            <button
+              onClick={toggleMuted}
+              data-testid="toggle-mute"
+              title={muted ? "Unmute" : "Mute"}
+              aria-pressed={muted}
+              className={`px-2 py-1 rounded ${
+                muted
+                  ? "text-slate-500 hover:text-slate-300"
+                  : "text-cyan-200 bg-cyan-400/15"
+              }`}
+            >
+              {muted ? <VolumeX size={13} /> : <Volume2 size={13} />}
+            </button>
+            <button
+              onClick={toggleMusic}
+              data-testid="toggle-music"
+              title={musicOn ? "Music off" : "Music on"}
+              aria-pressed={musicOn}
+              className={`px-2 py-1 rounded ${
+                musicOn
+                  ? "text-cyan-200 bg-cyan-400/15"
+                  : "text-slate-500 hover:text-slate-300"
+              }`}
+            >
+              <Music size={13} />
+            </button>
           </div>
         </div>
       </div>
