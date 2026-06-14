@@ -2,7 +2,7 @@
 
 import { useEffect } from "react";
 import dynamic from "next/dynamic";
-import Link from "next/link";
+import { Smartphone } from "lucide-react";
 import { useAquariumStore } from "@/store/aquariumStore";
 import { useGameStore } from "@/store/gameStore";
 import { useSimulationLoop } from "@/hooks/useSimulationLoop";
@@ -42,9 +42,9 @@ export default function GamePage() {
     <main className="h-screen w-screen flex flex-col overflow-hidden crt-scanlines">
       <TopBar />
 
-      <div className="flex-1 flex gap-3 px-3 pb-3 overflow-hidden">
+      <div className="flex-1 flex gap-2 sm:gap-3 px-2 sm:px-3 pb-2 sm:pb-3 overflow-hidden">
         {/* Left: Phaser canvas + control bar */}
-        <section className="flex-1 flex flex-col gap-3 min-w-0">
+        <section className="flex-1 flex flex-col gap-2 sm:gap-3 min-w-0">
           <div
             className="tank-container flex-1 relative overflow-hidden"
             data-testid="tank-container"
@@ -55,19 +55,12 @@ export default function GamePage() {
               <span className="blink-dot mr-2" />
               Live · Tank #1
             </div>
-            <Link
-              href="/"
-              className="absolute top-2 right-2 z-10 btn btn-ghost py-1.5 px-3 text-[10px]"
-              data-testid="back-home-link"
-            >
-              ← Lobby
-            </Link>
           </div>
           <ControlBar />
         </section>
 
         {/* Right: Dashboard */}
-        <aside className="w-[360px] flex flex-col gap-3 min-h-0">
+        <aside className="w-[230px] md:w-[300px] lg:w-[360px] flex flex-col gap-2 sm:gap-3 min-h-0">
           <PanelTabs />
           <div className="flex-1 overflow-hidden min-h-0">
             {rightPanel === "stats" && <StatsPanel />}
@@ -75,6 +68,17 @@ export default function GamePage() {
             {rightPanel === "log" && <EventLog />}
           </div>
         </aside>
+      </div>
+
+      {/* Mobile portrait: nudge the player to rotate for a bigger tank */}
+      <div className="rotate-notice" role="dialog" aria-label="Rotate your device">
+        <div className="rotate-notice__inner">
+          <Smartphone size={64} strokeWidth={1.5} className="rotate-notice__icon" />
+          <p className="rotate-notice__title">Putar HP ke landscape</p>
+          <p className="rotate-notice__sub">
+            Miringkan layar biar akuariummu lebih lega buat dimainkan 🐟
+          </p>
+        </div>
       </div>
     </main>
   );
