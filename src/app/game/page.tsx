@@ -152,11 +152,6 @@ export default function GamePage() {
               aquariumId={activeAquariumId}
               onReady={() => setSceneReady(true)}
             />
-            {/* HUD overlay */}
-            <div className="absolute top-2 left-2 z-10 panel-glass px-2 py-1 text-[9px] sm:text-[10px] tracking-widest text-cyan-300 uppercase">
-              <span className="blink-dot mr-2" />
-              Live · Tank #1
-            </div>
 
             {/* Edit-mode HUD (banner + selected-object controls) */}
             <EditOverlay />

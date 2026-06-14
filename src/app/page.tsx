@@ -199,11 +199,11 @@ function SaveManager() {
         </div>
       ) : (
         <button
-          className="btn-play"
+          className="btn btn-emerald"
           onClick={startCreate}
           data-testid="enter-tank-button"
         >
-          <Plus size={20} />
+          <Plus size={16} />
           Buat akuarium baru
         </button>
       )}

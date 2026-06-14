@@ -33,9 +33,8 @@ export function ShopPanel() {
   return (
     <div className="h-full overflow-y-auto pr-1 space-y-3" data-testid="shop-panel">
       <div className="panel p-3">
-        <header className="flex items-center justify-between mb-2">
+        <header className="mb-2">
           <span className="section-title">Fish</span>
-          <span className="title-eyebrow text-amber-300">${cash}</span>
         </header>
         <div className="divide-y divide-white/[0.06]" data-testid="shop-fish-list">
           {(Object.keys(FISH_SPECIES) as FishSpeciesId[]).map((id) => {
