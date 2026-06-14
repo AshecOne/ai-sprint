@@ -14,6 +14,7 @@ import { StatsPanel } from "@/components/game/StatsPanel";
 import { ShopPanel } from "@/components/game/ShopPanel";
 import { EventLog } from "@/components/game/EventLog";
 import { ControlBar } from "@/components/game/ControlBar";
+import { EditOverlay } from "@/components/game/EditOverlay";
 import { PanelTabs } from "@/components/game/PanelTabs";
 import { MobileNav } from "@/components/game/MobileNav";
 import { ConfirmProvider } from "@/components/game/ConfirmProvider";
@@ -111,6 +112,9 @@ export default function GamePage() {
               <span className="blink-dot mr-2" />
               Live · Tank #1
             </div>
+
+            {/* Edit-mode HUD (banner + selected-object controls) */}
+            <EditOverlay />
 
             {/* Mobile: full-screen panel overlay — one window, one focus.
                 No header: the bottom nav already labels the view and the
