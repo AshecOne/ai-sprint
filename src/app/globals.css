@@ -719,13 +719,3 @@ body {
 .save-row::-webkit-scrollbar-track { background: transparent; }
 
 .save-card { min-height: 124px; }
-.save-card--new {
-  border: 1px dashed rgba(34, 211, 238, 0.4);
-  border-radius: 8px;
-  background: rgba(34, 211, 238, 0.04);
-  transition: background 140ms ease, border-color 140ms ease;
-}
-.save-card--new:hover {
-  background: rgba(34, 211, 238, 0.08);
-  border-color: rgba(34, 211, 238, 0.6);
-}

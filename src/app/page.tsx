@@ -129,7 +129,7 @@ function SaveManager() {
   const empty = saves.length === 0;
 
   return (
-    <div className="w-full flex flex-col items-center gap-3">
+    <div className="w-full flex flex-col items-center gap-4">
       {empty && !creating && (
         <p className="text-sm text-slate-300 text-center max-w-xs">
           Belum ada akuarium. Buat yang pertama buat mulai memelihara ikan! 🐟
@@ -140,71 +140,73 @@ function SaveManager() {
           compact square cards; swipe / scroll sideways for more. The inner
           `w-max mx-auto` centres a short row but left-aligns (no clipped start)
           once it overflows, which `justify-center` + scroll can't do. */}
-      <div className="save-row w-full overflow-x-auto pb-2">
-        <div className="flex gap-3 w-max max-w-full mx-auto px-1">
-          {saves.map((slot) => (
-            <SaveCard
-              key={slot.id}
-              slot={slot}
-              onLoad={() => handleLoad(slot.id)}
-              onRename={(name) => {
-                renameSlot(slot.id, name);
-                refresh();
-              }}
-              onDelete={() => handleDelete(slot)}
-            />
-          ))}
-
-          {creating ? (
-            <div className="save-card panel shrink-0 w-44 flex flex-col gap-2 p-3 text-left snap-start">
-              <label className="text-[9px] uppercase tracking-widest text-cyan-300">
-                Nama akuarium
-              </label>
-              <input
-                autoFocus
-                value={newName}
-                maxLength={30}
-                onChange={(e) => setNewName(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") handleCreate();
-                  else if (e.key === "Escape") setCreating(false);
+      {!empty && (
+        <div className="save-row w-full overflow-x-auto pb-2">
+          <div className="flex gap-3 w-max max-w-full mx-auto px-1">
+            {saves.map((slot) => (
+              <SaveCard
+                key={slot.id}
+                slot={slot}
+                onLoad={() => handleLoad(slot.id)}
+                onRename={(name) => {
+                  renameSlot(slot.id, name);
+                  refresh();
                 }}
-                placeholder="Akuarium Saya"
-                data-testid="new-save-name-input"
-                className="w-full min-w-0 bg-slate-900/60 border border-cyan-400/40 rounded px-2 py-1.5 text-sm text-slate-100 outline-none focus:border-cyan-300"
+                onDelete={() => handleDelete(slot)}
               />
-              <div className="flex items-center gap-2 mt-auto">
-                <button
-                  className="btn btn-emerald flex-1 justify-center"
-                  onClick={handleCreate}
-                  data-testid="confirm-create-save"
-                >
-                  <Play size={15} fill="currentColor" />
-                  Mulai
-                </button>
-                <button
-                  className="btn btn-ghost shrink-0"
-                  onClick={() => setCreating(false)}
-                  aria-label="Batal buat akuarium"
-                >
-                  <X size={15} />
-                </button>
-              </div>
-            </div>
-          ) : (
-            <button
-              onClick={startCreate}
-              data-testid="enter-tank-button"
-              className="save-card save-card--new shrink-0 w-40 flex flex-col items-center justify-center gap-2 snap-start text-cyan-300 hover:text-cyan-200"
-            >
-              <Plus size={26} />
-              <span className="text-xs uppercase tracking-widest">
-                {empty ? "Buat Akuarium" : "Buat baru"}
-              </span>
-            </button>
-          )}
+            ))}
+          </div>
         </div>
-      </div>
+      )}
+
+      {/* Create lives BELOW the rail (not inside it) so it never scrolls out of
+          view or gets lost among the slots. */}
+      {creating ? (
+        <div className="panel w-full max-w-sm px-4 py-3 flex flex-col gap-2 text-left">
+          <label className="text-[10px] uppercase tracking-widest text-cyan-300">
+            Nama akuarium baru
+          </label>
+          <div className="flex items-center gap-2">
+            <input
+              autoFocus
+              value={newName}
+              maxLength={30}
+              onChange={(e) => setNewName(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") handleCreate();
+                else if (e.key === "Escape") setCreating(false);
+              }}
+              placeholder="Akuarium Saya"
+              data-testid="new-save-name-input"
+              className="flex-1 min-w-0 bg-slate-900/60 border border-cyan-400/40 rounded px-2 py-1.5 text-sm text-slate-100 outline-none focus:border-cyan-300"
+            />
+            <button
+              className="btn btn-emerald shrink-0"
+              onClick={handleCreate}
+              data-testid="confirm-create-save"
+            >
+              <Play size={16} fill="currentColor" />
+              Mulai
+            </button>
+            <button
+              className="btn btn-ghost shrink-0"
+              onClick={() => setCreating(false)}
+              aria-label="Batal buat akuarium"
+            >
+              <X size={16} />
+            </button>
+          </div>
+        </div>
+      ) : (
+        <button
+          className="btn-play"
+          onClick={startCreate}
+          data-testid="enter-tank-button"
+        >
+          <Plus size={20} />
+          Buat akuarium baru
+        </button>
+      )}
     </div>
   );
 }
