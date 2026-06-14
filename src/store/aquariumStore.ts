@@ -1,136 +1,264 @@
-import { create } from 'zustand';
-import type { Aquarium, Fish, Plant, Equipment, WaterParameters } from '@/simulation/types';
+"use client";
 
-interface AquariumStoreState {
+import { create } from "zustand";
+import { persist } from "zustand/middleware";
+import type { Aquarium, Equipment, Fish, Plant, SimulationEvent } from "@/simulation/types";
+import {
+  createStarterTank,
+  feedAll,
+  spawnFish,
+  spawnPlant,
+  uid,
+  waterChange,
+} from "@/simulation/engine";
+import type { FishSpeciesId, PlantSpeciesId, EquipmentType } from "@/simulation/types";
+import { EQUIPMENT_SPECS, FISH_SPECIES, PLANT_SPECIES } from "@/simulation/species";
+
+const mkEvent = (
+  severity: SimulationEvent["severity"],
+  message: string
+): SimulationEvent => ({
+  id: uid("evt"),
+  ts: Date.now(),
+  severity,
+  message,
+});
+
+interface AquariumState {
   aquariums: Aquarium[];
+  fish: Fish[];
+  plants: Plant[];
+  equipment: Equipment[];
+  events: SimulationEvent[];
+  cash: number;
+
+  /** Replace internal state from engine tick result */
+  applyTick: (data: {
+    aquarium: Aquarium;
+    fish: Fish[];
+    plants: Plant[];
+    equipment: Equipment[];
+    events: SimulationEvent[];
+  }) => void;
+
+  setAquariumName: (id: string, name: string) => void;
+
+  feedFish: (strength?: number) => void;
+  doWaterChange: (percent: number) => void;
+
+  buyFish: (species: FishSpeciesId) => void;
+  removeFishById: (id: string) => void;
+  removeDeadFish: () => void;
+
+  buyPlant: (species: PlantSpeciesId) => void;
+  removePlantById: (id: string) => void;
+
+  toggleEquipment: (id: string) => void;
+  setEquipmentPower: (id: string, power: number) => void;
+  buyEquipment: (type: EquipmentType) => void;
+  removeEquipment: (id: string) => void;
+
+  pushEvent: (evt: Omit<SimulationEvent, "id" | "ts">) => void;
+  clearEvents: () => void;
+  resetTank: () => void;
 }
 
-interface AquariumStoreActions {
-  addAquarium: (aquarium: Aquarium) => void;
-  removeAquarium: (id: string) => void;
-  updateParameters: (aquariumId: string, params: Partial<WaterParameters>) => void;
-  addFish: (aquariumId: string, fish: Fish) => void;
-  removeFish: (aquariumId: string, fishId: string) => void;
-  updateFish: (aquariumId: string, fishId: string, updates: Partial<Fish>) => void;
-  addPlant: (aquariumId: string, plant: Plant) => void;
-  removePlant: (aquariumId: string, plantId: string) => void;
-  updatePlant: (aquariumId: string, plantId: string, updates: Partial<Plant>) => void;
-  addEquipment: (aquariumId: string, equipment: Equipment) => void;
-  removeEquipment: (aquariumId: string, equipmentId: string) => void;
-  toggleEquipment: (aquariumId: string, equipmentId: string) => void;
-  updateBacteria: (aquariumId: string, level: number) => void;
-  recordParameterHistory: (aquariumId: string, tick: number) => void;
-}
+const starter = createStarterTank();
 
-export const useAquariumStore = create<AquariumStoreState & AquariumStoreActions>((set) => ({
-  aquariums: [],
+export const useAquariumStore = create<AquariumState>()(
+  persist(
+    (set, get) => ({
+      aquariums: [starter.aquarium],
+      fish: starter.fish,
+      plants: starter.plants,
+      equipment: starter.equipment,
+      events: [
+        {
+          id: uid("evt"),
+          ts: Date.now(),
+          severity: "success",
+          message: "Welcome to AquaSim. Your starter tank is online.",
+        },
+      ],
+      cash: 250,
 
-  addAquarium: (aquarium) =>
-    set((s) => ({ aquariums: [...s.aquariums, aquarium] })),
+      applyTick: ({ aquarium, fish, plants, equipment, events }) =>
+        set((s) => ({
+          aquariums: s.aquariums.map((a) => (a.id === aquarium.id ? aquarium : a)),
+          fish,
+          plants,
+          equipment,
+          events:
+            events.length > 0
+              ? [...events.reverse(), ...s.events].slice(0, 80)
+              : s.events,
+        })),
 
-  removeAquarium: (id) =>
-    set((s) => ({ aquariums: s.aquariums.filter((a) => a.id !== id) })),
+      setAquariumName: (id, name) =>
+        set((s) => ({
+          aquariums: s.aquariums.map((a) => (a.id === id ? { ...a, name } : a)),
+        })),
 
-  updateParameters: (aquariumId, params) =>
-    set((s) => ({
-      aquariums: s.aquariums.map((a) =>
-        a.id === aquariumId ? { ...a, parameters: { ...a.parameters, ...params } } : a
-      ),
-    })),
+      feedFish: (strength = 35) =>
+        set((s) => ({
+          fish: feedAll(s.fish, strength),
+          events: [
+            mkEvent("info", `Fed ${s.fish.filter((f) => f.alive).length} fish`),
+            ...s.events,
+          ].slice(0, 80),
+        })),
 
-  addFish: (aquariumId, fish) =>
-    set((s) => ({
-      aquariums: s.aquariums.map((a) =>
-        a.id === aquariumId ? { ...a, fish: [...a.fish, fish] } : a
-      ),
-    })),
-
-  removeFish: (aquariumId, fishId) =>
-    set((s) => ({
-      aquariums: s.aquariums.map((a) =>
-        a.id === aquariumId ? { ...a, fish: a.fish.filter((f) => f.id !== fishId) } : a
-      ),
-    })),
-
-  updateFish: (aquariumId, fishId, updates) =>
-    set((s) => ({
-      aquariums: s.aquariums.map((a) =>
-        a.id === aquariumId
-          ? { ...a, fish: a.fish.map((f) => (f.id === fishId ? { ...f, ...updates } : f)) }
-          : a
-      ),
-    })),
-
-  addPlant: (aquariumId, plant) =>
-    set((s) => ({
-      aquariums: s.aquariums.map((a) =>
-        a.id === aquariumId ? { ...a, plants: [...a.plants, plant] } : a
-      ),
-    })),
-
-  removePlant: (aquariumId, plantId) =>
-    set((s) => ({
-      aquariums: s.aquariums.map((a) =>
-        a.id === aquariumId
-          ? { ...a, plants: a.plants.filter((p) => p.id !== plantId) }
-          : a
-      ),
-    })),
-
-  updatePlant: (aquariumId, plantId, updates) =>
-    set((s) => ({
-      aquariums: s.aquariums.map((a) =>
-        a.id === aquariumId
-          ? { ...a, plants: a.plants.map((p) => (p.id === plantId ? { ...p, ...updates } : p)) }
-          : a
-      ),
-    })),
-
-  addEquipment: (aquariumId, equipment) =>
-    set((s) => ({
-      aquariums: s.aquariums.map((a) =>
-        a.id === aquariumId ? { ...a, equipment: [...a.equipment, equipment] } : a
-      ),
-    })),
-
-  removeEquipment: (aquariumId, equipmentId) =>
-    set((s) => ({
-      aquariums: s.aquariums.map((a) =>
-        a.id === aquariumId
-          ? { ...a, equipment: a.equipment.filter((e) => e.id !== equipmentId) }
-          : a
-      ),
-    })),
-
-  toggleEquipment: (aquariumId, equipmentId) =>
-    set((s) => ({
-      aquariums: s.aquariums.map((a) =>
-        a.id === aquariumId
-          ? {
-              ...a,
-              equipment: a.equipment.map((e) =>
-                e.id === equipmentId ? { ...e, active: !e.active } : e
+      doWaterChange: (percent) =>
+        set((s) => {
+          const aq = s.aquariums[0];
+          if (!aq) return s;
+          const newWater = waterChange(aq.water, percent);
+          return {
+            aquariums: s.aquariums.map((a) =>
+              a.id === aq.id ? { ...a, water: newWater } : a
+            ),
+            events: [
+              mkEvent(
+                "success",
+                `Water change ${Math.round(percent * 100)}% — toxins diluted`
               ),
-            }
-          : a
-      ),
-    })),
+              ...s.events,
+            ].slice(0, 80),
+          };
+        }),
 
-  updateBacteria: (aquariumId, level) =>
-    set((s) => ({
-      aquariums: s.aquariums.map((a) =>
-        a.id === aquariumId
-          ? { ...a, bacteriaLevel: Math.max(0, Math.min(100, level)), cycled: level >= 80 }
-          : a
-      ),
-    })),
+      buyFish: (species) =>
+        set((s) => {
+          const spec = FISH_SPECIES[species];
+          if (s.cash < spec.price) {
+            return {
+              events: [
+                mkEvent("warn", `Not enough cash for ${spec.label} ($${spec.price})`),
+                ...s.events,
+              ].slice(0, 80),
+            };
+          }
+          return {
+            cash: s.cash - spec.price,
+            fish: [...s.fish, spawnFish(species)],
+            events: [
+              mkEvent("success", `Added a ${spec.label} to the tank`),
+              ...s.events,
+            ].slice(0, 80),
+          };
+        }),
 
-  recordParameterHistory: (aquariumId, tick) =>
-    set((s) => ({
-      aquariums: s.aquariums.map((a) => {
-        if (a.id !== aquariumId) return a;
-        const history = [...a.parameterHistory, { tick, params: { ...a.parameters } }];
-        return { ...a, parameterHistory: history.slice(-720) };
-      }),
-    })),
-}));
+      removeFishById: (id) =>
+        set((s) => ({ fish: s.fish.filter((f) => f.id !== id) })),
+
+      removeDeadFish: () =>
+        set((s) => {
+          const dead = s.fish.filter((f) => !f.alive).length;
+          return {
+            fish: s.fish.filter((f) => f.alive),
+            events:
+              dead > 0
+                ? [
+                    mkEvent("info", `Removed ${dead} deceased fish`),
+                    ...s.events,
+                  ].slice(0, 80)
+                : s.events,
+          };
+        }),
+
+      buyPlant: (species) =>
+        set((s) => {
+          const spec = PLANT_SPECIES[species];
+          if (s.cash < spec.price) {
+            return {
+              events: [
+                mkEvent("warn", `Not enough cash for ${spec.label}`),
+                ...s.events,
+              ].slice(0, 80),
+            };
+          }
+          return {
+            cash: s.cash - spec.price,
+            plants: [...s.plants, spawnPlant(species)],
+            events: [
+              mkEvent("success", `Planted ${spec.label}`),
+              ...s.events,
+            ].slice(0, 80),
+          };
+        }),
+
+      removePlantById: (id) =>
+        set((s) => ({ plants: s.plants.filter((p) => p.id !== id) })),
+
+      toggleEquipment: (id) =>
+        set((s) => ({
+          equipment: s.equipment.map((e) =>
+            e.id === id ? { ...e, active: !e.active } : e
+          ),
+        })),
+
+      setEquipmentPower: (id, power) =>
+        set((s) => ({
+          equipment: s.equipment.map((e) =>
+            e.id === id ? { ...e, power } : e
+          ),
+        })),
+
+      buyEquipment: (type) =>
+        set((s) => {
+          const spec = EQUIPMENT_SPECS[type];
+          if (s.cash < spec.price) {
+            return {
+              events: [
+                mkEvent("warn", `Not enough cash for ${spec.label}`),
+                ...s.events,
+              ].slice(0, 80),
+            };
+          }
+          // place at random slot on glass
+          const x = 0.1 + Math.random() * 0.8;
+          const y = type === "filter" ? 0.15 : type === "light" ? 0.04 : 0.5;
+          return {
+            cash: s.cash - spec.price,
+            equipment: [
+              ...s.equipment,
+              { id: uid("eq"), type, x, y, active: true, power: 60 },
+            ],
+            events: [
+              mkEvent("success", `Installed ${spec.label}`),
+              ...s.events,
+            ].slice(0, 80),
+          };
+        }),
+
+      removeEquipment: (id) =>
+        set((s) => ({ equipment: s.equipment.filter((e) => e.id !== id) })),
+
+      pushEvent: (evt) =>
+        set((s) => ({
+          events: [
+            { id: uid("evt"), ts: Date.now(), ...evt } as SimulationEvent,
+            ...s.events,
+          ].slice(0, 80),
+        })),
+
+      clearEvents: () => set({ events: [] }),
+
+      resetTank: () => {
+        const fresh = createStarterTank();
+        set({
+          aquariums: [fresh.aquarium],
+          fish: fresh.fish,
+          plants: fresh.plants,
+          equipment: fresh.equipment,
+          cash: 250,
+          events: [mkEvent("success", "Tank reset to factory defaults")],
+        });
+      },
+    }),
+    {
+      name: "aquasim-aquarium",
+      version: 1,
+    }
+  )
+);

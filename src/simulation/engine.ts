@@ -1,167 +1,331 @@
-import type { Aquarium, WaterParameters } from './types';
+import type {
+  Aquarium,
+  Equipment,
+  Fish,
+  FishSpeciesId,
+  Plant,
+  PlantSpeciesId,
+  SimulationEvent,
+  WaterParameters,
+} from "./types";
+import { FISH_SPECIES, PLANT_SPECIES } from "./species";
 
-export interface FishUpdate {
-  fishId: string;
-  newStress: number;
-  alive: boolean;
-}
+let idCounter = 0;
+export const uid = (prefix = "id") => {
+  idCounter += 1;
+  return `${prefix}_${Date.now().toString(36)}_${idCounter}`;
+};
 
-export interface PlantUpdate {
-  plantId: string;
-  newHealth: number;
+const clamp = (v: number, min: number, max: number) =>
+  Math.max(min, Math.min(max, v));
+
+export const createDefaultWater = (): WaterParameters => ({
+  temperature: 25,
+  ph: 7.2,
+  ammonia: 0.0,
+  nitrite: 0.0,
+  nitrate: 5,
+  oxygen: 8.0,
+  hardness: 8,
+  turbidity: 1.5,
+  cleanliness: 96,
+  co2: 18,
+});
+
+export const createStarterTank = (): {
+  aquarium: Aquarium;
+  fish: Fish[];
+  plants: Plant[];
+  equipment: Equipment[];
+} => {
+  const aquarium: Aquarium = {
+    id: uid("aqua"),
+    name: "Starter Tank",
+    volume: 60,
+    width: 60,
+    height: 40,
+    depth: 30,
+    createdAt: new Date().toISOString(),
+    water: createDefaultWater(),
+    lightLevel: 0.7,
+    autoFeed: true,
+  };
+
+  const fish: Fish[] = [
+    spawnFish("guppy", 0.25, 0.35),
+    spawnFish("guppy", 0.4, 0.4),
+    spawnFish("guppy", 0.55, 0.45),
+    spawnFish("neon_tetra", 0.3, 0.5),
+    spawnFish("neon_tetra", 0.5, 0.55),
+    spawnFish("neon_tetra", 0.7, 0.48),
+    spawnFish("corydoras", 0.6, 0.8),
+  ];
+
+  const plants: Plant[] = [
+    spawnPlant("amazon_sword", 0.12, 0.86),
+    spawnPlant("java_fern", 0.32, 0.86),
+    spawnPlant("vallisneria", 0.55, 0.86),
+    spawnPlant("anubias", 0.75, 0.86),
+    spawnPlant("java_moss", 0.9, 0.86),
+  ];
+
+  const equipment: Equipment[] = [
+    { id: uid("eq"), type: "filter", x: 0.93, y: 0.02, active: true, power: 70 },
+    { id: uid("eq"), type: "heater", x: 0.05, y: 0.55, active: true, power: 55 },
+    { id: uid("eq"), type: "airstone", x: 0.2, y: 0.9, active: true, power: 60 },
+    { id: uid("eq"), type: "light", x: 0.5, y: 0.005, active: true, power: 80 },
+  ];
+
+  return { aquarium, fish, plants, equipment };
+};
+
+export const spawnFish = (
+  species: FishSpeciesId,
+  x = Math.random() * 0.8 + 0.1,
+  y = Math.random() * 0.6 + 0.2,
+  name?: string
+): Fish => {
+  const spec = FISH_SPECIES[species];
+  return {
+    id: uid(`fish_${species}`),
+    species,
+    name: name ?? `${spec.label} #${Math.floor(Math.random() * 999)}`,
+    size: spec.adultSize * (0.6 + Math.random() * 0.4),
+    health: 95,
+    stress: 5,
+    hunger: 30,
+    age: 0,
+    alive: true,
+    x,
+    y,
+    targetX: Math.random(),
+    targetY: 0.2 + Math.random() * 0.6,
+    facing: Math.random() > 0.5 ? 1 : -1,
+    speed: spec.baseSpeed,
+  };
+};
+
+export const spawnPlant = (
+  species: PlantSpeciesId,
+  x = Math.random() * 0.8 + 0.1,
+  y = 0.78 + Math.random() * 0.1
+): Plant => ({
+  id: uid(`plant_${species}`),
+  species,
+  x,
+  y,
+  health: 100,
+  scale: 0.9 + Math.random() * 0.5,
+});
+
+export interface TickContext {
+  dtSeconds: number;
+  aquarium: Aquarium;
+  fish: Fish[];
+  plants: Plant[];
+  equipment: Equipment[];
 }
 
 export interface TickResult {
-  parameters: Partial<WaterParameters>;
-  fishUpdates: FishUpdate[];
-  plantUpdates: PlantUpdate[];
-  newBacteriaLevel: number;
+  aquarium: Aquarium;
+  fish: Fish[];
+  plants: Plant[];
+  equipment: Equipment[];
+  events: SimulationEvent[];
 }
 
-function clamp(value: number, min: number, max: number): number {
-  return Math.max(min, Math.min(max, value));
-}
+/**
+ * Single simulation tick. Updates water chemistry, fish vitals, plant health,
+ * and emits events on threshold crossings.
+ */
+export const tickSimulation = (ctx: TickContext): TickResult => {
+  const dt = ctx.dtSeconds;
+  const water = { ...ctx.aquarium.water };
 
-function isLightPhase(tick: number, lightHoursPerDay: number): boolean {
-  return (tick % 24) < lightHoursPerDay;
-}
+  // Equipment effects
+  const filter = ctx.equipment.find((e) => e.type === "filter" && e.active);
+  const heater = ctx.equipment.find((e) => e.type === "heater" && e.active);
+  const air = ctx.equipment.find((e) => e.type === "airstone" && e.active);
+  const co2 = ctx.equipment.find((e) => e.type === "co2_diffuser" && e.active);
+  const light = ctx.equipment.find((e) => e.type === "light" && e.active);
 
-export function tickAquarium(aquarium: Aquarium, tick: number): TickResult {
-  const p = aquarium.parameters;
-  const { fish, plants, equipment, bacteriaLevel, dimensions, ambientTemperature, lightHoursPerDay } = aquarium;
-
-  const isLight = isLightPhase(tick, lightHoursPerDay);
-  const hasBioFilter = equipment.some(
-    e => (e.type === 'biological_filter' || e.type === 'mechanical_filter') && e.active,
-  );
-  const hasHeater = equipment.some(e => e.type === 'heater' && e.active);
-
-  // ── Nitrogen cycle ────────────────────────────────────────────────────────
-  let dNH3 = 0;
-  let dNO2 = 0;
-  let dNO3 = 0;
-
-  for (const f of fish) {
-    const tempScale = 1 + Math.max(0, p.temperature - 25) * 0.02;
-    dNH3 += f.alive ? f.nh3ProductionRate * tempScale : f.nh3ProductionRate * 0.5;
+  // Temperature trends toward setpoint based on heater power
+  if (heater) {
+    const target = 24 + (heater.power / 100) * 6; // 24..30
+    water.temperature += (target - water.temperature) * 0.02 * dt;
+  } else {
+    water.temperature += (21 - water.temperature) * 0.01 * dt;
   }
 
-  const nh3ToNo2 = p.ammonia * bacteriaLevel * 0.0008;
-  const no2ToNo3 = p.nitrite * bacteriaLevel * 0.0006;
-  dNH3 -= nh3ToNo2;
-  dNO2 += nh3ToNo2 - no2ToNo3;
-  dNO3 += no2ToNo3;
-
-  // ── O₂ / CO₂ balance ─────────────────────────────────────────────────────
-  let dO2 = 0;
-  let dCO2 = 0;
-
-  for (const f of fish) {
-    if (!f.alive) continue;
-    const tempScale = 1 + Math.max(0, p.temperature - 25) * 0.03;
-    dO2 -= f.o2ConsumptionRate * tempScale;
+  // Filter reduces ammonia and turbidity
+  if (filter) {
+    const eff = (filter.power / 100) * dt;
+    water.ammonia = Math.max(0, water.ammonia - 0.012 * eff);
+    water.nitrite = Math.max(0, water.nitrite - 0.008 * eff);
+    water.turbidity = Math.max(0, water.turbidity - 0.3 * eff);
+    water.cleanliness = clamp(water.cleanliness + 0.4 * eff, 0, 100);
+  } else {
+    water.turbidity += 0.04 * dt;
+    water.cleanliness -= 0.05 * dt;
   }
 
-  for (const plant of plants) {
-    if (isLight) {
-      dO2 += plant.o2ProductionRate;
-      dCO2 -= plant.co2ConsumptionRate;
-    } else {
-      dO2 -= plant.o2ProductionRate * 0.3;
+  // Air stone raises O2
+  const o2Target = air ? 8.5 + (air.power / 100) * 1.5 : 6.5;
+  water.oxygen += (o2Target - water.oxygen) * 0.06 * dt;
+
+  // CO2 diffuser
+  if (co2) {
+    water.co2 += 0.5 * dt * (co2.power / 100);
+    water.ph -= 0.002 * dt * (co2.power / 100);
+  } else {
+    water.co2 -= 0.2 * dt;
+  }
+  water.co2 = clamp(water.co2, 0, 100);
+
+  // Plants effect: produce O2, absorb nitrate when light is on
+  const lit = (light?.power ?? 0) / 100;
+  const aliveFish = ctx.fish.filter((f) => f.alive);
+  let totalOxygenFromPlants = 0;
+  let totalNitrateAbsorbed = 0;
+  const plants = ctx.plants.map((p) => {
+    const spec = PLANT_SPECIES[p.species];
+    const photo = lit > 0.1 ? 1 : 0.2;
+    totalOxygenFromPlants += spec.oxygenRate * photo * p.scale * dt;
+    totalNitrateAbsorbed += spec.nitrateRate * photo * p.scale * dt;
+    let health = p.health;
+    if (water.nitrate < 1) health -= 0.05 * dt; // starved
+    if (lit < 0.05) health -= 0.02 * dt;
+    if (water.co2 > 10 && lit > 0.3) health += 0.05 * dt;
+    return { ...p, health: clamp(health, 0, 100) };
+  });
+  water.oxygen = clamp(water.oxygen + totalOxygenFromPlants, 0, 14);
+  water.nitrate = Math.max(0, water.nitrate - totalNitrateAbsorbed);
+
+  // Fish biological load
+  const bioload =
+    aliveFish.reduce((acc, f) => acc + (f.size / 5) * (1 + f.hunger / 200), 0) *
+    dt;
+  water.ammonia += bioload * 0.0028;
+  water.nitrite += water.ammonia * 0.04 * dt;
+  water.nitrate += water.nitrite * 0.03 * dt;
+  water.oxygen -= aliveFish.length * 0.008 * dt;
+  water.turbidity += aliveFish.length * 0.005 * dt;
+
+  // Cleanliness drift
+  water.cleanliness = clamp(water.cleanliness - aliveFish.length * 0.01 * dt, 0, 100);
+
+  // Clamp
+  water.temperature = clamp(water.temperature, 5, 40);
+  water.ph = clamp(water.ph, 4, 10);
+  water.ammonia = clamp(water.ammonia, 0, 8);
+  water.nitrite = clamp(water.nitrite, 0, 8);
+  water.nitrate = clamp(water.nitrate, 0, 200);
+  water.oxygen = clamp(water.oxygen, 0, 14);
+  water.turbidity = clamp(water.turbidity, 0, 100);
+
+  // Fish vitals
+  const events: SimulationEvent[] = [];
+  const fish = ctx.fish.map((f): Fish => {
+    if (!f.alive) {
+      // Dead fish floats up
+      const y = Math.max(0.04, f.y - 0.02 * dt);
+      return { ...f, y, targetY: 0.04 };
     }
-    dNO3 -= plant.no3ConsumptionRate;
-  }
+    const spec = FISH_SPECIES[f.species];
+    // Stress factors
+    let stressDelta = 0;
+    if (water.temperature < spec.prefs.tempMin - 1 || water.temperature > spec.prefs.tempMax + 1) {
+      stressDelta += 0.8;
+    }
+    if (water.ph < spec.prefs.phMin - 0.3 || water.ph > spec.prefs.phMax + 0.3) {
+      stressDelta += 0.4;
+    }
+    if (water.ammonia > 0.25) stressDelta += water.ammonia * 4;
+    if (water.nitrite > 0.5) stressDelta += water.nitrite * 2;
+    if (water.oxygen < 5) stressDelta += (5 - water.oxygen) * 2;
+    if (water.turbidity > 30) stressDelta += 0.4;
 
-  // ── Equipment effects ─────────────────────────────────────────────────────
-  let dTurbidity = 0;
+    // Schooling: reduce stress if companions present
+    const companions = aliveFish.filter((c) => c.species === f.species).length;
+    if (companions < spec.schooling) stressDelta += 0.3;
 
-  for (const eq of equipment) {
-    if (!eq.active) continue;
-    const scale = Math.min(1, eq.maxTankVolumeLiters / dimensions.volumeLiters);
+    let stress = clamp(f.stress + (stressDelta - 0.6) * dt, 0, 100);
 
-    for (const effect of eq.effects) {
-      const scaled = effect.ratePerTick * scale;
-      switch (effect.parameter) {
-        case 'dissolvedOxygen': dO2        += scaled; break;
-        case 'ammonia':         dNH3       += scaled; break;
-        case 'nitrite':         dNO2       += scaled; break;
-        case 'nitrate':         dNO3       += scaled; break;
-        case 'co2':             dCO2       += scaled; break;
-        case 'turbidity':       dTurbidity += scaled; break;
-      }
+    // Hunger
+    let hunger = clamp(f.hunger + 0.7 * dt, 0, 100);
+
+    // Health
+    let healthDelta = 0;
+    if (stress > 65) healthDelta -= 0.6;
+    if (hunger > 80) healthDelta -= 0.4;
+    if (water.ammonia > 0.5) healthDelta -= water.ammonia * 1.5;
+    if (water.oxygen < 4) healthDelta -= (4 - water.oxygen);
+    if (stress < 25 && hunger < 60) healthDelta += 0.15;
+
+    let health = clamp(f.health + healthDelta * dt, 0, 100);
+    let alive: boolean = f.alive;
+
+    if (health <= 0) {
+      alive = false;
+      events.push({
+        id: uid("evt"),
+        ts: Date.now(),
+        severity: "danger",
+        message: `${f.name} (${spec.label}) has died`,
+      });
+    }
+
+    return { ...f, stress, hunger, health, alive, age: f.age + dt };
+  });
+
+  // Cleanliness / turbidity thresholds
+  if (water.ammonia > 0.5 && water.ammonia - ctx.aquarium.water.ammonia > 0) {
+    if (Math.random() < 0.02 * dt) {
+      events.push({
+        id: uid("evt"),
+        ts: Date.now(),
+        severity: "warn",
+        message: `Ammonia spike detected: ${water.ammonia.toFixed(2)} mg/L`,
+      });
     }
   }
-
-  // Dead fish: extra turbidity (NH₃ already counted at 50% above)
-  for (const f of fish) {
-    if (!f.alive) dTurbidity += 0.05;
+  if (water.oxygen < 4 && ctx.aquarium.water.oxygen >= 4) {
+    events.push({
+      id: uid("evt"),
+      ts: Date.now(),
+      severity: "warn",
+      message: `Oxygen dangerously low (${water.oxygen.toFixed(1)} mg/L)`,
+    });
   }
 
-  // ── pH & buffering ────────────────────────────────────────────────────────
-  const khBuffer = Math.max(0, 1 - p.kh / 20);
-  let phDelta = 0;
-
-  if (p.ammonia > 0) {
-    phDelta -= p.ammonia * 0.005 * khBuffer;
-  }
-  if (p.co2 > 30) {
-    phDelta -= ((p.co2 - 30) / 5) * 0.005 * khBuffer;
-  }
-  if (p.ammonia <= 0.25 && p.co2 <= 30) {
-    phDelta += 0.002;
-  }
-
-  // ── Temperature dynamics ──────────────────────────────────────────────────
-  let dTemp = (ambientTemperature - p.temperature) * 0.005;
-  if (hasHeater && p.temperature < 26) {
-    dTemp += 0.1;
-  }
-
-  // ── Bacteria growth ───────────────────────────────────────────────────────
-  let newBacteria = bacteriaLevel;
-  if (p.ammonia > 0) newBacteria += 0.1;
-  if (hasBioFilter) newBacteria += 0.05;
-  newBacteria = Math.min(100, newBacteria);
-
-  // ── New absolute parameter values ─────────────────────────────────────────
-  const parameters: Partial<WaterParameters> = {
-    ammonia:         clamp(p.ammonia + dNH3, 0, 20),
-    nitrite:         clamp(p.nitrite + dNO2, 0, 20),
-    nitrate:         clamp(p.nitrate + dNO3, 0, 100),
-    dissolvedOxygen: clamp(p.dissolvedOxygen + dO2, 0, 15),
-    co2:             clamp(p.co2 + dCO2, 0, 100),
-    ph:              clamp(p.ph + phDelta, 4, 10),
-    temperature:     clamp(p.temperature + dTemp, 10, 40),
-    turbidity:       clamp(p.turbidity + dTurbidity, 0, 100),
-    kh: p.kh,
-    gh: p.gh,
+  return {
+    aquarium: { ...ctx.aquarium, water },
+    fish,
+    plants,
+    equipment: ctx.equipment,
+    events,
   };
+};
 
-  // ── Fish stress ───────────────────────────────────────────────────────────
-  const fishUpdates: FishUpdate[] = [];
-  for (const f of fish) {
-    if (!f.alive) continue;
+export const feedAll = (fish: Fish[], strength = 35): Fish[] =>
+  fish.map((f) => (f.alive ? { ...f, hunger: clamp(f.hunger - strength, 0, 100) } : f));
 
-    let outOfRange = 0;
-    if (p.temperature < f.temperatureTolerance.min || p.temperature > f.temperatureTolerance.max) outOfRange++;
-    if (p.ph < f.phTolerance.min || p.ph > f.phTolerance.max) outOfRange++;
-    if (p.dissolvedOxygen < f.o2Tolerance.min) outOfRange++;
-
-    const stressDelta = outOfRange > 0 ? outOfRange * 2 : -1;
-    const newStress = clamp(f.stress + stressDelta, 0, 100);
-    fishUpdates.push({ fishId: f.id, newStress, alive: newStress < 100 });
-  }
-
-  // ── Plant health (NO₃ starvation) ────────────────────────────────────────
-  const plantUpdates: PlantUpdate[] = [];
-  for (const plant of plants) {
-    const starving = p.nitrate < 2;
-    const healthDelta = starving ? -0.5 : 0.1;
-    const newHealth = clamp(plant.health + healthDelta, 0, 100);
-    if (newHealth !== plant.health) {
-      plantUpdates.push({ plantId: plant.id, newHealth });
-    }
-  }
-
-  return { parameters, fishUpdates, plantUpdates, newBacteriaLevel: newBacteria };
-}
+export const waterChange = (
+  water: WaterParameters,
+  percent: number
+): WaterParameters => {
+  const p = clamp(percent, 0, 1);
+  const fresh = createDefaultWater();
+  return {
+    temperature: water.temperature * (1 - p) + fresh.temperature * p,
+    ph: water.ph * (1 - p) + fresh.ph * p,
+    ammonia: water.ammonia * (1 - p),
+    nitrite: water.nitrite * (1 - p),
+    nitrate: water.nitrate * (1 - p),
+    oxygen: water.oxygen * (1 - p) + fresh.oxygen * p,
+    hardness: water.hardness * (1 - p) + fresh.hardness * p,
+    turbidity: water.turbidity * (1 - p),
+    cleanliness: clamp(water.cleanliness + p * 50, 0, 100),
+    co2: water.co2 * (1 - p),
+  };
+};

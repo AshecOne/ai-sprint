@@ -1,40 +1,35 @@
-import { create } from 'zustand';
-import type { GameSpeed } from '@/simulation/types';
+"use client";
 
-interface GameStoreState {
-  tick: number;
-  speed: GameSpeed;
-  paused: boolean;
-  currency: number;
+import { create } from "zustand";
+
+interface GameState {
   activeAquariumId: string | null;
+  setActiveAquariumId: (id: string | null) => void;
+  tick: number;
+  bumpTick: () => void;
+  paused: boolean;
+  setPaused: (p: boolean) => void;
+  speed: 1 | 2 | 4;
+  setSpeed: (s: 1 | 2 | 4) => void;
+  /** UI panel state */
+  rightPanel: "stats" | "shop" | "log";
+  setRightPanel: (p: "stats" | "shop" | "log") => void;
+  /** Last tick time (ms) */
+  lastTickMs: number;
+  setLastTickMs: (ms: number) => void;
 }
 
-interface GameStoreActions {
-  setTick: (tick: number) => void;
-  setSpeed: (speed: GameSpeed) => void;
-  togglePause: () => void;
-  setPaused: (paused: boolean) => void;
-  addCurrency: (amount: number) => void;
-  spendCurrency: (amount: number) => boolean;
-  setActiveAquarium: (id: string | null) => void;
-}
-
-export const useGameStore = create<GameStoreState & GameStoreActions>((set, get) => ({
-  tick: 0,
-  speed: 1,
-  paused: true,
-  currency: 500,
+export const useGameStore = create<GameState>((set) => ({
   activeAquariumId: null,
-
-  setTick: (tick) => set({ tick }),
-  setSpeed: (speed) => set({ speed }),
-  togglePause: () => set((s) => ({ paused: !s.paused })),
+  setActiveAquariumId: (id) => set({ activeAquariumId: id }),
+  tick: 0,
+  bumpTick: () => set((s) => ({ tick: s.tick + 1 })),
+  paused: false,
   setPaused: (paused) => set({ paused }),
-  addCurrency: (amount) => set((s) => ({ currency: s.currency + amount })),
-  spendCurrency: (amount) => {
-    if (get().currency < amount) return false;
-    set((s) => ({ currency: s.currency - amount }));
-    return true;
-  },
-  setActiveAquarium: (id) => set({ activeAquariumId: id }),
+  speed: 1,
+  setSpeed: (speed) => set({ speed }),
+  rightPanel: "stats",
+  setRightPanel: (rightPanel) => set({ rightPanel }),
+  lastTickMs: Date.now(),
+  setLastTickMs: (lastTickMs) => set({ lastTickMs }),
 }));
