@@ -4,15 +4,20 @@ import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import type { Aquarium, Equipment, Fish, Plant, SimulationEvent } from "@/simulation/types";
 import {
+  applyFeedLoad,
+  cleanReward,
+  cleanTankWater,
   createStarterTank,
   feedAll,
   spawnFish,
   spawnPlant,
   uid,
-  waterChange,
 } from "@/simulation/engine";
 import type { FishSpeciesId, PlantSpeciesId, EquipmentType } from "@/simulation/types";
 import { EQUIPMENT_SPECS, FISH_SPECIES, PLANT_SPECIES } from "@/simulation/species";
+
+/** Cooldown between paid Clean actions, so it can't be spammed. */
+export const CLEAN_COOLDOWN_MS = 60_000;
 
 const mkEvent = (
   severity: SimulationEvent["severity"],
@@ -31,6 +36,11 @@ interface AquariumState {
   equipment: Equipment[];
   events: SimulationEvent[];
   cash: number;
+  /** Increments on every clean action — a transient signal the renderer
+   *  watches to spawn a "sparkle" burst. */
+  cleanFx: number;
+  /** Timestamp (ms) when the Clean action becomes available again. */
+  cleanReadyAt: number;
 
   /** Replace internal state from engine tick result */
   applyTick: (data: {
@@ -44,7 +54,7 @@ interface AquariumState {
   setAquariumName: (id: string, name: string) => void;
 
   feedFish: (strength?: number) => void;
-  doWaterChange: (percent: number) => void;
+  cleanTank: () => void;
 
   buyFish: (species: FishSpeciesId) => void;
   removeFishById: (id: string) => void;
@@ -81,6 +91,8 @@ export const useAquariumStore = create<AquariumState>()(
         },
       ],
       cash: 250,
+      cleanFx: 0,
+      cleanReadyAt: 0,
 
       applyTick: ({ aquarium, fish, plants, equipment, events }) =>
         set((s) => ({
@@ -100,28 +112,51 @@ export const useAquariumStore = create<AquariumState>()(
         })),
 
       feedFish: (strength = 35) =>
-        set((s) => ({
-          fish: feedAll(s.fish, strength),
-          events: [
-            mkEvent("info", `Fed ${s.fish.filter((f) => f.alive).length} fish`),
-            ...s.events,
-          ].slice(0, 80),
-        })),
+        set((s) => {
+          const { fish, waste } = feedAll(s.fish, strength);
+          const aq = s.aquariums[0];
+          const aquariums = aq
+            ? s.aquariums.map((a) =>
+                a.id === aq.id
+                  ? { ...a, water: applyFeedLoad(a.water, strength, waste) }
+                  : a
+              )
+            : s.aquariums;
+          const fedCount = s.fish.filter((f) => f.alive).length;
+          return {
+            fish,
+            aquariums,
+            events: [
+              mkEvent(
+                "info",
+                waste > 0.4
+                  ? `Fed ${fedCount} fish — leftover food is fouling the water`
+                  : `Fed ${fedCount} fish`
+              ),
+              ...s.events,
+            ].slice(0, 80),
+          };
+        }),
 
-      doWaterChange: (percent) =>
+      cleanTank: () =>
         set((s) => {
           const aq = s.aquariums[0];
           if (!aq) return s;
-          const newWater = waterChange(aq.water, percent);
+          // Cooldown gate — ignore clicks while still recharging.
+          if (Date.now() < s.cleanReadyAt) return s;
+          const reward = cleanReward(aq.water);
+          const newWater = cleanTankWater(aq.water);
           return {
+            cash: s.cash + reward,
+            cleanFx: s.cleanFx + 1,
+            cleanReadyAt: Date.now() + CLEAN_COOLDOWN_MS,
             aquariums: s.aquariums.map((a) =>
               a.id === aq.id ? { ...a, water: newWater } : a
             ),
             events: [
-              mkEvent(
-                "success",
-                `Water change ${Math.round(percent * 100)}% — toxins diluted`
-              ),
+              reward > 0
+                ? mkEvent("success", `Tank scrubbed — sold $${reward} of detritus`)
+                : mkEvent("info", "Tank scrubbed (already clean — no payout)"),
               ...s.events,
             ].slice(0, 80),
           };
@@ -252,6 +287,8 @@ export const useAquariumStore = create<AquariumState>()(
           plants: fresh.plants,
           equipment: fresh.equipment,
           cash: 250,
+          cleanFx: 0,
+          cleanReadyAt: 0,
           events: [mkEvent("success", "Tank reset to factory defaults")],
         });
       },

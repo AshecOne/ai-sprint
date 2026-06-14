@@ -244,6 +244,7 @@ export const tickSimulation = (ctx: TickContext): TickResult => {
     if (water.nitrite > 0.5) stressDelta += water.nitrite * 2;
     if (water.oxygen < 5) stressDelta += (5 - water.oxygen) * 2;
     if (water.turbidity > 30) stressDelta += 0.4;
+    if (water.cleanliness < 40) stressDelta += (40 - water.cleanliness) * 0.02;
 
     // Schooling: reduce stress if companions present
     const companions = aliveFish.filter((c) => c.species === f.species).length;
@@ -307,25 +308,78 @@ export const tickSimulation = (ctx: TickContext): TickResult => {
   };
 };
 
-export const feedAll = (fish: Fish[], strength = 35): Fish[] =>
-  fish.map((f) => (f.alive ? { ...f, hunger: clamp(f.hunger - strength, 0, 100) } : f));
+export interface FeedResult {
+  fish: Fish[];
+  /** 0..1 fraction of dropped food left uneaten (leftover rots → extra dirt) */
+  waste: number;
+}
 
-export const waterChange = (
+/**
+ * Feed all living fish. Each fish eats up to its hunger; food beyond that is
+ * wasted and reported as `waste` (0 = everything eaten, 1 = nothing eaten).
+ */
+export const feedAll = (fish: Fish[], strength = 35): FeedResult => {
+  const alive = fish.filter((f) => f.alive);
+  if (alive.length === 0) return { fish, waste: 1 };
+  const supplyPerFish = strength;
+  const demandPerFish = alive.map((f) => Math.min(f.hunger, supplyPerFish));
+  const totalSupply = supplyPerFish * alive.length;
+  const totalDemand = demandPerFish.reduce((acc, d) => acc + d, 0);
+  const waste = totalSupply > 0 ? clamp(1 - totalDemand / totalSupply, 0, 1) : 1;
+  const fed = fish.map((f) =>
+    f.alive ? { ...f, hunger: clamp(f.hunger - strength, 0, 100) } : f
+  );
+  return { fish: fed, waste };
+};
+
+/**
+ * Apply the dirtying effect of a feed to the water: lower cleanliness, raise
+ * turbidity, and add a little ammonia from rotting leftovers.
+ */
+export const applyFeedLoad = (
   water: WaterParameters,
-  percent: number
-): WaterParameters => {
-  const p = clamp(percent, 0, 1);
+  strength: number,
+  waste: number
+): WaterParameters => ({
+  ...water,
+  cleanliness: clamp(water.cleanliness - strength * 0.08 * (1 + waste), 0, 100),
+  turbidity: clamp(water.turbidity + strength * 0.05 * (1 + waste), 0, 100),
+  ammonia: clamp(water.ammonia + strength * 0.004 * (1 + waste * 2), 0, 8),
+});
+
+/** Abstract 0..100 "how dirty" index combining cleanliness + turbidity. */
+export const dirtIndex = (water: WaterParameters): number =>
+  clamp((100 - water.cleanliness) * 0.7 + water.turbidity * 0.3, 0, 100);
+
+/**
+ * Cash earned for cleaning, proportional to how dirty the water is.
+ * Returns 0 when the tank is already clean (anti-farming).
+ */
+export const cleanReward = (water: WaterParameters): number => {
+  const d = dirtIndex(water);
+  if (d <= 5) return 0;
+  return Math.round(d * 0.8);
+};
+
+/**
+ * Clean the tank — the single maintenance action. Scrubs detritus (cleanliness
+ * up, turbidity down) AND dilutes the water chemistry (ammonia/nitrite/nitrate/
+ * CO₂ down, plus a freshening nudge to oxygen/pH/temperature), like a partial
+ * water change rolled in.
+ */
+export const cleanTankWater = (water: WaterParameters): WaterParameters => {
+  const p = 0.3; // chemistry dilution, ~30% water change equivalent
   const fresh = createDefaultWater();
   return {
+    ...water,
     temperature: water.temperature * (1 - p) + fresh.temperature * p,
     ph: water.ph * (1 - p) + fresh.ph * p,
     ammonia: water.ammonia * (1 - p),
     nitrite: water.nitrite * (1 - p),
     nitrate: water.nitrate * (1 - p),
     oxygen: water.oxygen * (1 - p) + fresh.oxygen * p,
-    hardness: water.hardness * (1 - p) + fresh.hardness * p,
-    turbidity: water.turbidity * (1 - p),
-    cleanliness: clamp(water.cleanliness + p * 50, 0, 100),
     co2: water.co2 * (1 - p),
+    cleanliness: clamp(water.cleanliness + 40, 0, 100),
+    turbidity: clamp(water.turbidity * 0.4, 0, 100),
   };
 };
