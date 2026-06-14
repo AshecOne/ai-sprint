@@ -49,7 +49,7 @@ export default function GamePage() {
 
       <div
         className={`flex-1 flex overflow-hidden min-h-0 ${
-          isMobile ? "" : "gap-2 sm:gap-3 px-2 sm:px-3 pb-2 sm:pb-3"
+          isMobile ? "" : "gap-2 sm:gap-3 px-2 sm:px-3 pt-2 sm:pt-3 pb-2 sm:pb-3"
         }`}
       >
         {/* Left: Phaser canvas (rendered once) + control bar */}
