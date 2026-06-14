@@ -4,6 +4,9 @@ import { useEffect, useRef } from "react";
 
 interface PhaserGameProps {
   aquariumId: string | null;
+  /** Fired once the Phaser scene has finished building + its first sprite
+   *  sync, so the parent can hide the loading overlay. */
+  onReady?: () => void;
 }
 
 /**
@@ -11,12 +14,16 @@ interface PhaserGameProps {
  * touches the SSR pipeline, then mounts a single Game instance into the
  * provided ref. Handles resize and clean unmount.
  */
-export default function PhaserGame({ aquariumId }: PhaserGameProps) {
+export default function PhaserGame({ aquariumId, onReady }: PhaserGameProps) {
   const parentRef = useRef<HTMLDivElement | null>(null);
   // Hold the game in a ref to allow safe destroy on unmount.
   // We use `unknown` here because Phaser's type isn't available SSR-side.
   const gameRef = useRef<unknown>(null);
   const resizeObsRef = useRef<ResizeObserver | null>(null);
+  // Keep the latest onReady in a ref so it never enters the effect deps — that
+  // would recreate the whole Phaser.Game on every parent render.
+  const onReadyRef = useRef(onReady);
+  onReadyRef.current = onReady;
 
   useEffect(() => {
     let cancelled = false;
@@ -52,6 +59,11 @@ export default function PhaserGame({ aquariumId }: PhaserGameProps) {
 
       const game = new Phaser.Game(config);
       gameRef.current = game;
+      // Listen for the scene's ready signal BEFORE starting it, so we never
+      // miss the event. Fires once MainScene.create() + first sync is done.
+      game.events.once("scene-ready", () => {
+        if (!cancelled) onReadyRef.current?.();
+      });
       // Start the MainScene with aquariumId data
       game.scene.start("MainScene", { aquariumId });
 

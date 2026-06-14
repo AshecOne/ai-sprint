@@ -61,3 +61,17 @@ export function useRotatePrompt(): boolean {
 
   return show;
 }
+
+/**
+ * False on the server / first client render, true after the first client
+ * effect has run. Because {@link useIsMobile} and {@link useRotatePrompt}
+ * resolve their `matchMedia` state in a mount effect, this flips true only
+ * once those have settled — so the loader can wait for the layout decision
+ * (desktop vs mobile vs rotate-prompt) before fading out, avoiding a flash of
+ * the wrong layout.
+ */
+export function useClientSettled(): boolean {
+  const [settled, setSettled] = useState(false);
+  useEffect(() => setSettled(true), []);
+  return settled;
+}
