@@ -1,5 +1,6 @@
 import Phaser from "phaser";
 import { useAquariumStore } from "@/store/aquariumStore";
+import { useGameStore } from "@/store/gameStore";
 import { FISH_SPECIES, PLANT_SPECIES } from "@/simulation/species";
 import { dirtIndex } from "@/simulation/engine";
 import type { Fish, Plant, Equipment } from "@/simulation/types";
@@ -48,6 +49,9 @@ export class MainScene extends Phaser.Scene {
   // Track the last canvas size so we can re-scale relative positions on resize.
   private lastWidth = 0;
   private lastHeight = 0;
+  // Edit mode: when on, plants & equipment are draggable/selectable.
+  private lastEditMode = false;
+  private selectionGfx?: Phaser.GameObjects.Graphics;
 
   constructor() {
     super({ key: "MainScene" });
@@ -151,10 +155,16 @@ export class MainScene extends Phaser.Scene {
     // 11. Suspended detritus (visible only when the water is dirty)
     this.createDebris(width, height);
 
+    // Selection outline drawn around the decor object picked in edit mode.
+    // Below the night/glass overlays but above everything else.
+    this.selectionGfx = this.add.graphics();
+    this.selectionGfx.setDepth(90);
+
     this.lastCleanFx = this.getStore().cleanFx;
     this.lastWidth = width;
     this.lastHeight = height;
 
+    this.setupDecorDragInput();
     this.syncWithStore();
     this.scale.on("resize", this.handleResize, this);
 
@@ -463,6 +473,153 @@ export class MainScene extends Phaser.Scene {
     return useAquariumStore.getState();
   }
 
+  private getGameStore() {
+    return useGameStore.getState();
+  }
+
+  // ──────────────── Edit mode (drag / select decor) ─────────────────
+
+  /** Register the global drag/select listeners once. Individual sprites are
+   *  flipped interactive/draggable as edit mode turns on and off. */
+  private setupDecorDragInput() {
+    // Grabbing an object selects it and lifts it above its neighbours.
+    this.input.on(
+      "dragstart",
+      (_p: Phaser.Input.Pointer, obj: Phaser.GameObjects.GameObject) => {
+        const id = obj.getData("decorId");
+        if (!id) return;
+        this.getGameStore().setSelectedDecorId(id);
+        const go = obj as Phaser.GameObjects.Image;
+        go.setData("origDepth", go.depth);
+        go.setDepth(80);
+      }
+    );
+
+    // Live drag → push the constrained, normalised position into the store.
+    // The renderer re-reads the store each frame, so the sprite follows.
+    this.input.on(
+      "drag",
+      (
+        _p: Phaser.Input.Pointer,
+        obj: Phaser.GameObjects.GameObject,
+        dragX: number,
+        dragY: number
+      ) => this.commitDecorDrag(obj, dragX, dragY)
+    );
+
+    this.input.on(
+      "dragend",
+      (_p: Phaser.Input.Pointer, obj: Phaser.GameObjects.GameObject) => {
+        const go = obj as Phaser.GameObjects.Image;
+        const orig = go.getData("origDepth");
+        if (typeof orig === "number") go.setDepth(orig);
+      }
+    );
+
+    // A plain tap on a decor object selects it (without a drag).
+    this.input.on(
+      "gameobjectdown",
+      (_p: Phaser.Input.Pointer, obj: Phaser.GameObjects.GameObject) => {
+        if (!this.getGameStore().editMode) return;
+        const id = obj.getData("decorId");
+        if (id) this.getGameStore().setSelectedDecorId(id);
+      }
+    );
+
+    // Tapping empty water clears the selection.
+    this.input.on(
+      "pointerdown",
+      (_p: Phaser.Input.Pointer, currentlyOver: Phaser.GameObjects.GameObject[]) => {
+        if (!this.getGameStore().editMode) return;
+        if (!currentlyOver || currentlyOver.length === 0) {
+          this.getGameStore().setSelectedDecorId(null);
+        }
+      }
+    );
+  }
+
+  /** Tag a sprite with its decor identity and (optionally) enable interaction. */
+  private tagDecorSprite(
+    sprite: Phaser.GameObjects.Image,
+    kind: "plant" | "equipment",
+    id: string,
+    type?: string
+  ) {
+    sprite.setData("decorKind", kind);
+    sprite.setData("decorId", id);
+    if (type) sprite.setData("decorType", type);
+    if (this.getGameStore().editMode) this.enableDecorSprite(sprite, true);
+  }
+
+  private enableDecorSprite(sprite: Phaser.GameObjects.Image, enabled: boolean) {
+    if (enabled) {
+      sprite.setInteractive({ useHandCursor: true });
+      this.input.setDraggable(sprite, true);
+    } else {
+      // Both calls are needed — disabling drag alone leaves the object
+      // interactive (Phaser issue #4003).
+      this.input.setDraggable(sprite, false);
+      sprite.disableInteractive();
+    }
+  }
+
+  /** Flip every plant & equipment sprite interactive on/off in one pass. */
+  private applyDecorInteractive(enabled: boolean) {
+    for (const [, v] of this.plantVisuals) this.enableDecorSprite(v.sprite, enabled);
+    for (const [, v] of this.equipmentVisuals) this.enableDecorSprite(v.sprite, enabled);
+  }
+
+  /** Convert a drag position to a normalised, per-type-constrained coordinate
+   *  and commit it to the store. */
+  private commitDecorDrag(
+    obj: Phaser.GameObjects.GameObject,
+    dragX: number,
+    dragY: number
+  ) {
+    const { width, height } = this.scale;
+    const id = obj.getData("decorId") as string;
+    const kind = obj.getData("decorKind") as "plant" | "equipment";
+    const store = this.getStore();
+    if (kind === "plant") {
+      // Plants are rooted to the substrate → only X moves. Store clamps too.
+      store.setPlantPosition(id, dragX / width);
+      return;
+    }
+    const eq = store.equipment.find((e) => e.id === id);
+    if (!eq) return;
+    const clamp = (v: number, lo: number, hi: number) =>
+      Math.max(lo, Math.min(hi, v));
+    let nx = eq.x;
+    let ny = eq.y;
+    if (eq.type === "light") {
+      // Light spans the width at the top → only its height (Y) is meaningful.
+      ny = clamp(dragY / height, 0.02, 0.5);
+    } else if (eq.type === "airstone" || eq.type === "co2_diffuser") {
+      // Sits on the substrate → only X moves.
+      nx = clamp(dragX / width, 0.05, 0.95);
+    } else {
+      // Heater / filter float freely inside the glass.
+      nx = clamp(dragX / width, 0.05, 0.95);
+      ny = clamp(dragY / height, 0.05, 0.85);
+    }
+    store.setEquipmentPosition(id, nx, ny);
+  }
+
+  /** Draw a pulsing outline around the currently selected decor sprite. */
+  private drawSelection(selectedId: string | null) {
+    const g = this.selectionGfx;
+    if (!g) return;
+    g.clear();
+    if (!selectedId) return;
+    const v =
+      this.plantVisuals.get(selectedId) ?? this.equipmentVisuals.get(selectedId);
+    if (!v) return; // object was deleted / not yet spawned
+    const b = v.sprite.getBounds();
+    const pulse = 0.55 + 0.35 * Math.abs(Math.sin(this.elapsed * 3));
+    g.lineStyle(2, 0x34d399, pulse);
+    g.strokeRoundedRect(b.x - 4, b.y - 4, b.width + 8, b.height + 8, 5);
+  }
+
   private currentAquarium() {
     const state = this.getStore();
     if (this.aquariumId) {
@@ -495,6 +652,8 @@ export class MainScene extends Phaser.Scene {
         if (this.anims.exists(`${spec.spriteKey}_swim`)) {
           sprite.play(`${spec.spriteKey}_swim`);
         }
+        // Stay hidden if we spawned while the player is arranging decor.
+        if (this.getGameStore().editMode) sprite.setVisible(false);
         visual = { sprite };
         this.fishVisuals.set(fish.id, visual);
       }
@@ -530,6 +689,7 @@ export class MainScene extends Phaser.Scene {
           swayFreq: 0.5 + Math.random() * 0.7,
         };
         this.plantVisuals.set(plant.id, visual);
+        this.tagDecorSprite(sprite, "plant", plant.id);
       } else {
         // Keep plants pinned to substrate even if simulation x changed
         visual.sprite.x = plant.x * width;
@@ -558,6 +718,13 @@ export class MainScene extends Phaser.Scene {
         this.layoutEquipmentSprite(sprite, eq, width, height);
         visual = { sprite };
         this.equipmentVisuals.set(eq.id, visual);
+        this.tagDecorSprite(sprite, "equipment", eq.id, eq.type);
+      } else {
+        // Re-layout each sync so moves (drag or nudge buttons, which only
+        // touch the store) are reflected — equipment isn't repositioned in
+        // update() the way fish/plants are.
+        this.layoutEquipmentSprite(visual.sprite, eq, width, height);
+        visual.emitter?.setPosition(visual.sprite.x, visual.sprite.y - 8);
       }
       visual.sprite.setAlpha(eq.active ? 1 : 0.4);
 
@@ -607,6 +774,17 @@ export class MainScene extends Phaser.Scene {
     this.syncFish(state.fish);
     this.syncPlants(state.plants);
     this.syncEquipment(state.equipment);
+
+    // Edit mode: flip interactivity when it toggles, and outline the selection.
+    const gameState = this.getGameStore();
+    if (gameState.editMode !== this.lastEditMode) {
+      this.lastEditMode = gameState.editMode;
+      this.applyDecorInteractive(gameState.editMode);
+      // Hide the fish while arranging so decor can be placed without the
+      // livestock swimming over the work area.
+      for (const [, v] of this.fishVisuals) v.sprite.setVisible(!gameState.editMode);
+    }
+    this.drawSelection(gameState.editMode ? gameState.selectedDecorId : null);
 
     const { width, height } = this.scale;
 

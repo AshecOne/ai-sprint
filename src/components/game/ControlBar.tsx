@@ -17,6 +17,7 @@ import {
   Home,
   Maximize,
   Minimize,
+  Move,
 } from "lucide-react";
 
 export function ControlBar({ floating = false }: { floating?: boolean }) {
@@ -29,6 +30,8 @@ export function ControlBar({ floating = false }: { floating?: boolean }) {
   const cleanReadyAt = useAquariumStore((s) => s.cleanReadyAt);
   const estReward = water ? cleanReward(water) : 0;
   const confirm = useConfirm();
+  const editMode = useGameStore((s) => s.editMode);
+  const setEditMode = useGameStore((s) => s.setEditMode);
   const { isSupported: fsSupported, isFullscreen, toggle: toggleFullscreen } =
     useFullscreen();
 
@@ -72,47 +75,51 @@ export function ControlBar({ floating = false }: { floating?: boolean }) {
       }
       data-testid="control-bar"
     >
-      {/* Primary actions — the two things players do most */}
-      <div className="flex items-center gap-2">
-        <button
-          onClick={() => {
-            feed(35);
-            audio.play("feed");
-          }}
-          className="btn btn-amber btn-lg"
-          data-testid="feed-fish-button"
-        >
-          <Cookie size={15} strokeWidth={2.5} />
-          Feed
-        </button>
-        <button
-          onClick={() => {
-            clean();
-            audio.play("clean");
-            // A payout means detritus was sold — chime the coin too.
-            if (estReward > 0) audio.play("coin");
-          }}
-          disabled={onCooldown}
-          className={`btn btn-emerald btn-lg ${onCooldown ? "opacity-50 cursor-not-allowed" : ""}`}
-          data-testid="clean-tank-button"
-          title={
-            onCooldown
-              ? `Clean recharging — ready in ${cooldownLabel}`
-              : estReward > 0
-              ? `Scrub the tank and sell ~$${estReward} of detritus`
-              : "Tank is clean — nothing to sell yet"
-          }
-        >
-          <Sparkles size={15} strokeWidth={2.5} />
-          {onCooldown
-            ? `Clean ${cooldownLabel}`
-            : `Clean${estReward > 0 ? ` (+$${estReward})` : ""}`}
-        </button>
-      </div>
+      {/* Primary actions — the two things players do most. Hidden while
+          arranging decor: the edit banner's "Selesai" handles exit, so the
+          tank stays uncluttered and stray taps can't feed/clean mid-edit. */}
+      {!editMode && (
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => {
+              feed(35);
+              audio.play("feed");
+            }}
+            className="btn btn-amber btn-lg"
+            data-testid="feed-fish-button"
+          >
+            <Cookie size={15} strokeWidth={2.5} />
+            Feed
+          </button>
+          <button
+            onClick={() => {
+              clean();
+              audio.play("clean");
+              // A payout means detritus was sold — chime the coin too.
+              if (estReward > 0) audio.play("coin");
+            }}
+            disabled={onCooldown}
+            className={`btn btn-emerald btn-lg ${onCooldown ? "opacity-50 cursor-not-allowed" : ""}`}
+            data-testid="clean-tank-button"
+            title={
+              onCooldown
+                ? `Clean recharging — ready in ${cooldownLabel}`
+                : estReward > 0
+                ? `Scrub the tank and sell ~$${estReward} of detritus`
+                : "Tank is clean — nothing to sell yet"
+            }
+          >
+            <Sparkles size={15} strokeWidth={2.5} />
+            {onCooldown
+              ? `Clean ${cooldownLabel}`
+              : `Clean${estReward > 0 ? ` (+$${estReward})` : ""}`}
+          </button>
+        </div>
+      )}
 
       {/* Contextual + rare actions */}
-      <div className="flex items-center gap-2">
-        {dead > 0 && (
+      <div className="flex items-center gap-2 ml-auto">
+        {!editMode && dead > 0 && (
           <button
             onClick={async () => {
               const ok = await confirm({
@@ -128,6 +135,21 @@ export function ControlBar({ floating = false }: { floating?: boolean }) {
           >
             <Trash2 size={13} strokeWidth={2.5} />
             Net ({dead})
+          </button>
+        )}
+
+        {!editMode && (
+          <button
+            onClick={() => {
+              setEditMode(true);
+              audio.play("toggle");
+            }}
+            className="btn btn-ghost"
+            data-testid="edit-mode-toggle"
+            title="Arrange & remove decor"
+          >
+            <Move size={14} strokeWidth={2.5} />
+            Arrange
           </button>
         )}
 

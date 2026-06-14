@@ -19,6 +19,10 @@ import { EQUIPMENT_SPECS, FISH_SPECIES, PLANT_SPECIES } from "@/simulation/speci
 /** Cooldown between paid Clean actions, so it can't be spammed. */
 export const CLEAN_COOLDOWN_MS = 60_000;
 
+/** Clamp a normalised coordinate into a [min, max] sub-range of the tank. */
+const clamp01 = (v: number, min: number, max: number) =>
+  Math.max(min, Math.min(max, v));
+
 const mkEvent = (
   severity: SimulationEvent["severity"],
   message: string
@@ -63,9 +67,11 @@ interface AquariumState {
 
   buyPlant: (species: PlantSpeciesId) => void;
   removePlantById: (id: string) => void;
+  setPlantPosition: (id: string, x: number) => void;
 
   toggleEquipment: (id: string) => void;
   setEquipmentPower: (id: string, power: number) => void;
+  setEquipmentPosition: (id: string, x: number, y: number) => void;
   buyEquipment: (type: EquipmentType) => void;
   removeEquipment: (id: string) => void;
 
@@ -236,6 +242,15 @@ export const useAquariumStore = create<AquariumState>()(
       removePlantById: (id) =>
         set((s) => ({ plants: s.plants.filter((p) => p.id !== id) })),
 
+      // Plants are rooted to the substrate, so only X is meaningful. Clamp here
+      // too as a safety net even though the edit interaction also clamps.
+      setPlantPosition: (id, x) =>
+        set((s) => ({
+          plants: s.plants.map((p) =>
+            p.id === id ? { ...p, x: clamp01(x, 0.05, 0.95) } : p
+          ),
+        })),
+
       toggleEquipment: (id) =>
         set((s) => ({
           equipment: s.equipment.map((e) =>
@@ -247,6 +262,17 @@ export const useAquariumStore = create<AquariumState>()(
         set((s) => ({
           equipment: s.equipment.map((e) =>
             e.id === id ? { ...e, power } : e
+          ),
+        })),
+
+      // Move a piece of equipment. Per-type movement constraints live in the
+      // edit interaction; here we just clamp into the tank frame as a safety net.
+      setEquipmentPosition: (id, x, y) =>
+        set((s) => ({
+          equipment: s.equipment.map((e) =>
+            e.id === id
+              ? { ...e, x: clamp01(x, 0.02, 0.98), y: clamp01(y, 0.02, 0.98) }
+              : e
           ),
         })),
 
