@@ -11,9 +11,12 @@ interface GameState {
   setPaused: (p: boolean) => void;
   speed: 1 | 2 | 4;
   setSpeed: (s: 1 | 2 | 4) => void;
-  /** UI panel state */
+  /** UI panel state (desktop sidebar tabs) */
   rightPanel: "stats" | "shop" | "log";
   setRightPanel: (p: "stats" | "shop" | "log") => void;
+  /** Mobile single-focus view: the tank, or one full-screen panel */
+  mobileView: "tank" | "stats" | "shop" | "log";
+  setMobileView: (v: "tank" | "stats" | "shop" | "log") => void;
   /** Last tick time (ms) */
   lastTickMs: number;
   setLastTickMs: (ms: number) => void;
@@ -30,6 +33,8 @@ export const useGameStore = create<GameState>((set) => ({
   setSpeed: (speed) => set({ speed }),
   rightPanel: "stats",
   setRightPanel: (rightPanel) => set({ rightPanel }),
+  mobileView: "tank",
+  setMobileView: (mobileView) => set({ mobileView }),
   lastTickMs: Date.now(),
   setLastTickMs: (lastTickMs) => set({ lastTickMs }),
 }));

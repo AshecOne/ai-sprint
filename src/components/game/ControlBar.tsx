@@ -1,16 +1,20 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import { useAquariumStore } from "@/store/aquariumStore";
 import { useGameStore } from "@/store/gameStore";
 import { cleanReward } from "@/simulation/engine";
-import { Pause, Play, FastForward, Cookie, RefreshCw, Trash2, Sparkles } from "lucide-react";
+import {
+  Cookie,
+  RefreshCw,
+  Trash2,
+  Sparkles,
+  MoreHorizontal,
+  Home,
+} from "lucide-react";
 
-export function ControlBar() {
-  const paused = useGameStore((s) => s.paused);
-  const setPaused = useGameStore((s) => s.setPaused);
-  const speed = useGameStore((s) => s.speed);
-  const setSpeed = useGameStore((s) => s.setSpeed);
+export function ControlBar({ floating = false }: { floating?: boolean }) {
   const feed = useAquariumStore((s) => s.feedFish);
   const clean = useAquariumStore((s) => s.cleanTank);
   const resetTank = useAquariumStore((s) => s.resetTank);
@@ -32,49 +36,48 @@ export function ControlBar() {
     cooldownLeft % 60
   ).padStart(2, "0")}`;
 
+  // Overflow menu (rare actions live here to keep the bar uncluttered).
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!menuOpen) return;
+    const onDocClick = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setMenuOpen(false);
+      }
+    };
+    const onEsc = (e: KeyboardEvent) => e.key === "Escape" && setMenuOpen(false);
+    document.addEventListener("mousedown", onDocClick);
+    document.addEventListener("keydown", onEsc);
+    return () => {
+      document.removeEventListener("mousedown", onDocClick);
+      document.removeEventListener("keydown", onEsc);
+    };
+  }, [menuOpen]);
+
   return (
-    <div className="panel flex items-center justify-between gap-3 px-3 py-2" data-testid="control-bar">
+    <div
+      className={
+        floating
+          ? "control-floating flex items-center justify-between gap-3"
+          : "panel flex items-center justify-between gap-3 px-3 py-2"
+      }
+      data-testid="control-bar"
+    >
+      {/* Primary actions — the two things players do most */}
       <div className="flex items-center gap-2">
         <button
-          onClick={() => setPaused(!paused)}
-          className="btn"
-          data-testid="toggle-pause"
-        >
-          {paused ? <Play size={12} /> : <Pause size={12} />}
-          {paused ? "Resume" : "Pause"}
-        </button>
-        <div className="flex items-center gap-1 panel-glass p-1 rounded-md">
-          {([1, 2, 4] as const).map((s) => (
-            <button
-              key={s}
-              onClick={() => setSpeed(s)}
-              data-testid={`speed-${s}x`}
-              className={`px-2.5 py-1 text-[11px] tracking-widest font-semibold rounded ${
-                speed === s
-                  ? "bg-cyan-400/20 text-cyan-200"
-                  : "text-slate-400 hover:text-slate-200"
-              }`}
-            >
-              {s}×
-            </button>
-          ))}
-          <FastForward size={12} className="text-slate-500 mx-1" />
-        </div>
-      </div>
-
-      <div className="flex items-center gap-2 flex-wrap justify-end">
-        <button
           onClick={() => feed(35)}
-          className="btn btn-amber"
+          className="btn btn-amber btn-lg"
           data-testid="feed-fish-button"
         >
-          <Cookie size={12} />
+          <Cookie size={15} strokeWidth={2.5} />
           Feed
         </button>
         <button
           onClick={() => clean()}
           disabled={onCooldown}
-          className={`btn btn-emerald ${onCooldown ? "opacity-50 cursor-not-allowed" : ""}`}
+          className={`btn btn-emerald btn-lg ${onCooldown ? "opacity-50 cursor-not-allowed" : ""}`}
           data-testid="clean-tank-button"
           title={
             onCooldown
@@ -84,31 +87,66 @@ export function ControlBar() {
               : "Tank is clean — nothing to sell yet"
           }
         >
-          <Sparkles size={12} />
+          <Sparkles size={15} strokeWidth={2.5} />
           {onCooldown
             ? `Clean ${cooldownLabel}`
             : `Clean${estReward > 0 ? ` (+$${estReward})` : ""}`}
         </button>
+      </div>
+
+      {/* Contextual + rare actions */}
+      <div className="flex items-center gap-2">
         {dead > 0 && (
           <button
             onClick={() => removeDead()}
             className="btn btn-danger"
             data-testid="remove-dead-button"
           >
-            <Trash2 size={12} />
+            <Trash2 size={13} strokeWidth={2.5} />
             Net ({dead})
           </button>
         )}
-        <button
-          onClick={() => {
-            if (confirm("Reset the tank? You'll lose all progress.")) resetTank();
-          }}
-          className="btn btn-ghost"
-          data-testid="reset-tank-button"
-        >
-          <RefreshCw size={12} />
-          Reset
-        </button>
+
+        <div className="relative" ref={menuRef}>
+          <button
+            onClick={() => setMenuOpen((o) => !o)}
+            className="btn btn-ghost"
+            data-testid="control-overflow"
+            aria-haspopup="menu"
+            aria-expanded={menuOpen}
+            title="More"
+          >
+            <MoreHorizontal size={16} strokeWidth={2.5} />
+          </button>
+          {menuOpen && (
+            <div className="hud-menu" role="menu">
+              <Link
+                href="/"
+                className="hud-menu-item"
+                data-testid="back-home-link"
+                role="menuitem"
+                onClick={() => setMenuOpen(false)}
+              >
+                <Home size={14} />
+                Lobby
+              </Link>
+              <button
+                onClick={() => {
+                  setMenuOpen(false);
+                  if (confirm("Reset the tank? You'll lose all progress.")) {
+                    resetTank();
+                  }
+                }}
+                className="hud-menu-item hud-menu-item--danger"
+                data-testid="reset-tank-button"
+                role="menuitem"
+              >
+                <RefreshCw size={14} />
+                Reset tank
+              </button>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
