@@ -8,6 +8,7 @@ import {
   cleanReward,
   cleanTankWater,
   createStarterTank,
+  dirtIndex,
   feedAll,
   spawnFish,
   spawnPlant,
@@ -161,8 +162,20 @@ export const useAquariumStore = create<AquariumState>()(
           if (!aq) return s;
           // Cooldown gate — ignore clicks while still recharging.
           if (Date.now() < s.cleanReadyAt) return s;
-          const reward = cleanReward(aq.water);
+          const aliveCount = s.fish.filter((f) => f.alive).length;
+          const reward = cleanReward(aq.water, aliveCount);
           const newWater = cleanTankWater(aq.water);
+          // Distinguish *why* there was no payout: an empty/lifeless tank
+          // earns nothing (the reward is for caring for fish) vs. a tank that
+          // was simply already clean.
+          let evt: SimulationEvent;
+          if (reward > 0) {
+            evt = mkEvent("success", `Tank scrubbed — sold $${reward} of detritus`);
+          } else if (aliveCount === 0 && dirtIndex(aq.water) > 5) {
+            evt = mkEvent("info", "Tank scrubbed — no living fish to care for, no payout");
+          } else {
+            evt = mkEvent("info", "Tank scrubbed (already clean — no payout)");
+          }
           return {
             cash: s.cash + reward,
             cleanFx: s.cleanFx + 1,
@@ -170,12 +183,7 @@ export const useAquariumStore = create<AquariumState>()(
             aquariums: s.aquariums.map((a) =>
               a.id === aq.id ? { ...a, water: newWater } : a
             ),
-            events: [
-              reward > 0
-                ? mkEvent("success", `Tank scrubbed — sold $${reward} of detritus`)
-                : mkEvent("info", "Tank scrubbed (already clean — no payout)"),
-              ...s.events,
-            ].slice(0, 80),
+            events: [evt, ...s.events].slice(0, 80),
           };
         }),
 
