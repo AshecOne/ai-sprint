@@ -235,6 +235,44 @@ body {
 }
 .btn-emerald:hover { background: rgba(52, 211, 153, 0.22); }
 
+/* Big primary "Play" button used on the lobby */
+.btn-play {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 18px 38px;
+  border-radius: 10px;
+  font-family: "Press Start 2P", "VT323", monospace;
+  font-size: 16px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #06222b;
+  background: linear-gradient(180deg, #5ee7f7, #22d3ee);
+  border: 2px solid #a5f3fc;
+  box-shadow:
+    0 0 0 4px rgba(34, 211, 238, 0.15),
+    0 10px 28px rgba(34, 211, 238, 0.35),
+    inset 0 2px 0 rgba(255, 255, 255, 0.45);
+  cursor: pointer;
+  transition: transform 140ms ease, box-shadow 180ms ease, filter 140ms ease;
+  animation: play-pulse 2.4s ease-in-out infinite;
+}
+.btn-play:hover {
+  transform: translateY(-2px) scale(1.02);
+  filter: brightness(1.08);
+  box-shadow:
+    0 0 0 5px rgba(34, 211, 238, 0.22),
+    0 14px 36px rgba(34, 211, 238, 0.5),
+    inset 0 2px 0 rgba(255, 255, 255, 0.5);
+}
+.btn-play:active { transform: translateY(0) scale(0.99); }
+
+@keyframes play-pulse {
+  0%, 100% { box-shadow: 0 0 0 4px rgba(34, 211, 238, 0.15), 0 10px 28px rgba(34, 211, 238, 0.35), inset 0 2px 0 rgba(255, 255, 255, 0.45); }
+  50% { box-shadow: 0 0 0 7px rgba(34, 211, 238, 0.08), 0 10px 32px rgba(34, 211, 238, 0.45), inset 0 2px 0 rgba(255, 255, 255, 0.45); }
+}
+
 .title-eyebrow {
   font-size: 10px;
   font-weight: 700;
@@ -353,4 +391,132 @@ body {
 
 .ok-glow {
   box-shadow: 0 0 16px rgba(52, 211, 153, 0.15);
+}
+
+/* ============================================================
+   Lobby (home page) — animated aquarium background
+   ============================================================ */
+.lobby {
+  background:
+    radial-gradient(ellipse at 50% -10%, rgba(94, 231, 247, 0.16), transparent 55%),
+    linear-gradient(180deg, #062436 0%, #04141f 55%, #020c14 100%);
+}
+
+.lobby-title {
+  text-shadow:
+    0 2px 0 rgba(0, 0, 0, 0.45),
+    0 0 18px rgba(34, 211, 238, 0.35);
+}
+
+.lobby-hint {
+  font-size: 10px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  animation: blink 2.2s ease-in-out infinite;
+}
+
+.lobby-bg {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+/* drifting light beams from the surface */
+.lobby-water {
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(105deg, transparent 40%, rgba(165, 243, 252, 0.05) 50%, transparent 60%),
+    linear-gradient(75deg, transparent 42%, rgba(165, 243, 252, 0.04) 52%, transparent 62%);
+  background-size: 200% 100%;
+  animation: water-shift 16s linear infinite;
+}
+@keyframes water-shift {
+  0% { background-position: 0% 0, 0% 0; }
+  100% { background-position: 200% 0, -200% 0; }
+}
+
+/* fish swim across; each lane gets its own depth, speed, delay */
+.lobby-fish {
+  position: absolute;
+  left: -10%;
+  opacity: 0.9;
+  filter: drop-shadow(0 3px 4px rgba(0, 0, 0, 0.35));
+  animation-name: swim, bob;
+  animation-timing-function: linear, ease-in-out;
+  animation-iteration-count: infinite, infinite;
+}
+.lobby-fish--1 { top: 22%; animation-duration: 22s, 3.4s; animation-delay: 0s, 0s; transform: scale(1.3); }
+.lobby-fish--2 { top: 44%; animation-duration: 17s, 2.8s; animation-delay: 4s, 0.5s; transform: scale(0.9); }
+.lobby-fish--3 { top: 63%; animation-duration: 26s, 4.1s; animation-delay: 9s, 1s; transform: scale(1.1); }
+.lobby-fish--4 { top: 33%; animation-duration: 20s, 3.1s; animation-delay: 13s, 0.3s; transform: scale(0.75); }
+
+@keyframes swim {
+  0%   { left: -12%; }
+  100% { left: 112%; }
+}
+@keyframes bob {
+  0%, 100% { margin-top: 0; }
+  50%      { margin-top: -10px; }
+}
+
+/* bubbles rising from the substrate */
+.lobby-bubble {
+  position: absolute;
+  bottom: -24px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 30% 30%, rgba(255, 255, 255, 0.7), rgba(165, 243, 252, 0.15));
+  border: 1px solid rgba(165, 243, 252, 0.3);
+  animation: rise linear infinite;
+}
+.lobby-bubble--1 { left: 12%; width: 6px;  height: 6px;  animation-duration: 7s;  animation-delay: 0s; }
+.lobby-bubble--2 { left: 28%; width: 10px; height: 10px; animation-duration: 9s;  animation-delay: 2s; }
+.lobby-bubble--3 { left: 47%; width: 5px;  height: 5px;  animation-duration: 6s;  animation-delay: 1s; }
+.lobby-bubble--4 { left: 66%; width: 9px;  height: 9px;  animation-duration: 10s; animation-delay: 3.5s; }
+.lobby-bubble--5 { left: 81%; width: 7px;  height: 7px;  animation-duration: 8s;  animation-delay: 0.8s; }
+.lobby-bubble--6 { left: 92%; width: 4px;  height: 4px;  animation-duration: 5.5s; animation-delay: 2.4s; }
+
+@keyframes rise {
+  0%   { transform: translateY(0) translateX(0); opacity: 0; }
+  10%  { opacity: 0.8; }
+  90%  { opacity: 0.8; }
+  100% { transform: translateY(-100vh) translateX(14px); opacity: 0; }
+}
+
+/* substrate + swaying plants */
+.lobby-floor {
+  position: absolute;
+  inset: auto 0 0 0;
+  height: 90px;
+  background:
+    linear-gradient(180deg, transparent, rgba(4, 12, 20, 0.9) 60%),
+    repeating-linear-gradient(90deg, #0a2433 0 4px, #0c2a3b 4px 8px);
+  border-top: 2px solid #103245;
+}
+.lobby-plant {
+  position: absolute;
+  bottom: 26px;
+  transform-origin: bottom center;
+  animation: sway ease-in-out infinite alternate;
+  opacity: 0.85;
+}
+.lobby-plant--1 { left: 8%;  animation-duration: 3.6s; }
+.lobby-plant--2 { left: 31%; animation-duration: 4.4s; transform: scale(1.25); }
+.lobby-plant--3 { left: 70%; animation-duration: 3.1s; transform: scale(0.9); }
+.lobby-plant--4 { left: 88%; animation-duration: 4.8s; }
+
+@keyframes sway {
+  0%   { transform: rotate(-5deg); }
+  100% { transform: rotate(5deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lobby-fish, .lobby-bubble, .lobby-plant, .lobby-water, .btn-play, .lobby-hint {
+    animation: none;
+  }
 }
