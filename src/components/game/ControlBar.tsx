@@ -6,6 +6,7 @@ import { useAquariumStore } from "@/store/aquariumStore";
 import { useGameStore } from "@/store/gameStore";
 import { useConfirm } from "@/components/game/ConfirmProvider";
 import { cleanReward } from "@/simulation/engine";
+import { useFullscreen } from "@/hooks/useFullscreen";
 import {
   Cookie,
   RefreshCw,
@@ -13,6 +14,8 @@ import {
   Sparkles,
   MoreHorizontal,
   Home,
+  Maximize,
+  Minimize,
 } from "lucide-react";
 
 export function ControlBar({ floating = false }: { floating?: boolean }) {
@@ -25,6 +28,8 @@ export function ControlBar({ floating = false }: { floating?: boolean }) {
   const cleanReadyAt = useAquariumStore((s) => s.cleanReadyAt);
   const estReward = water ? cleanReward(water) : 0;
   const confirm = useConfirm();
+  const { isSupported: fsSupported, isFullscreen, toggle: toggleFullscreen } =
+    useFullscreen();
 
   // Tick once a second so the cooldown countdown stays live.
   const [now, setNow] = useState(() => Date.now());
@@ -140,6 +145,24 @@ export function ControlBar({ floating = false }: { floating?: boolean }) {
                 <Home size={14} />
                 Lobby
               </Link>
+              {fsSupported && (
+                <button
+                  onClick={() => {
+                    setMenuOpen(false);
+                    toggleFullscreen();
+                  }}
+                  className="hud-menu-item"
+                  data-testid="fullscreen-toggle"
+                  role="menuitem"
+                >
+                  {isFullscreen ? (
+                    <Minimize size={14} />
+                  ) : (
+                    <Maximize size={14} />
+                  )}
+                  {isFullscreen ? "Exit fullscreen" : "Enter fullscreen"}
+                </button>
+              )}
               <button
                 onClick={async () => {
                   setMenuOpen(false);

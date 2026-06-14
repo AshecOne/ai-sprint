@@ -65,7 +65,7 @@ export default function GamePage() {
 
   return (
     <ConfirmProvider>
-    <main className="h-screen w-screen flex flex-col overflow-hidden crt-scanlines">
+    <main className="game-shell w-screen flex flex-col overflow-hidden crt-scanlines">
       <TopBar />
 
       <div
