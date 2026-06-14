@@ -704,3 +704,18 @@ body {
   color: var(--accent-cyan);
   background: rgba(34, 211, 238, 0.12);
 }
+
+/* Lobby save-slot rail: horizontal scroller of compact square cards, so the
+   lobby stays short no matter how many aquariums are saved. */
+.save-row {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(34, 211, 238, 0.4) transparent;
+}
+.save-row::-webkit-scrollbar { height: 6px; }
+.save-row::-webkit-scrollbar-thumb {
+  background: rgba(34, 211, 238, 0.35);
+  border-radius: 999px;
+}
+.save-row::-webkit-scrollbar-track { background: transparent; }
+
+.save-card { min-height: 124px; }
