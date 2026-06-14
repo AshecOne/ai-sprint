@@ -18,7 +18,10 @@ const FADE_MS = 450;
  */
 export function GameLoader({ ready }: { ready: boolean }) {
   const [render, setRender] = useState(true);
-  const [visible, setVisible] = useState(false);
+  // Start fully opaque so the overlay covers the page from the very first
+  // paint — no fade-IN, otherwise the tank flashes through for one frame
+  // before the overlay becomes visible. We only fade OUT when ready.
+  const [hiding, setHiding] = useState(false);
   // Respect reduced-motion: skip the fade entirely (instant hide).
   const reduceRef = useRef(false);
 
@@ -26,9 +29,6 @@ export function GameLoader({ ready }: { ready: boolean }) {
     reduceRef.current =
       typeof window !== "undefined" &&
       window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    // Fade in on the next frame so the opacity transition actually runs.
-    const id = requestAnimationFrame(() => setVisible(true));
-    return () => cancelAnimationFrame(id);
   }, []);
 
   useEffect(() => {
@@ -37,7 +37,7 @@ export function GameLoader({ ready }: { ready: boolean }) {
       setRender(false);
       return;
     }
-    setVisible(false);
+    setHiding(true);
     const t = setTimeout(() => setRender(false), FADE_MS);
     return () => clearTimeout(t);
   }, [ready]);
@@ -59,7 +59,7 @@ export function GameLoader({ ready }: { ready: boolean }) {
         alignItems: "center",
         justifyContent: "center",
         overflow: "hidden",
-        opacity: reduceRef.current ? 1 : visible ? 1 : 0,
+        opacity: hiding ? 0 : 1,
         transition: reduceRef.current ? "none" : `opacity ${FADE_MS}ms ease`,
       }}
     >

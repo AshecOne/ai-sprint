@@ -23,8 +23,9 @@ const PhaserGame = dynamic(() => import("@/renderer/PhaserGame"), {
   ssr: false,
 });
 
-// Minimum time the loader stays up so a fast load doesn't flash by (AC: 400–800ms).
-const MIN_LOADER_MS = 600;
+// Minimum time the loader stays up so the transition feels deliberate (a brief
+// "loading" beat) rather than a flicker.
+const MIN_LOADER_MS = 1500;
 // Safety net: if the scene never signals ready (error/stall), reveal anyway.
 const READY_FALLBACK_MS = 6000;
 
