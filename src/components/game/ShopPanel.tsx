@@ -1,6 +1,7 @@
 "use client";
 
 import { useAquariumStore } from "@/store/aquariumStore";
+import { useConfirm } from "@/components/game/ConfirmProvider";
 import { FISH_SPECIES, PLANT_SPECIES, EQUIPMENT_SPECS } from "@/simulation/species";
 import type { FishSpeciesId, PlantSpeciesId, EquipmentType } from "@/simulation/types";
 
@@ -9,6 +10,21 @@ export function ShopPanel() {
   const buyFish = useAquariumStore((s) => s.buyFish);
   const buyPlant = useAquariumStore((s) => s.buyPlant);
   const buyEquipment = useAquariumStore((s) => s.buyEquipment);
+  const confirm = useConfirm();
+
+  // Buttons are disabled when unaffordable, so a confirmed buy always leaves
+  // a non-negative balance. The "don't ask again" choice is shared across all
+  // shop purchases for the session via the rememberKey.
+  const confirmBuy = async (label: string, price: number, buy: () => void) => {
+    const ok = await confirm({
+      title: `Buy ${label}?`,
+      message: `${label} costs $${price}. You'll have $${cash - price} left.`,
+      confirmLabel: `Buy ($${price})`,
+      rememberKey: "shop-buy",
+      rememberLabel: "Don't ask for purchases again",
+    });
+    if (ok) buy();
+  };
 
   return (
     <div className="h-full overflow-y-auto pr-1 space-y-3" data-testid="shop-panel">
@@ -30,7 +46,7 @@ export function ShopPanel() {
                 description={spec.description}
                 price={spec.price}
                 canAfford={canAfford}
-                onBuy={() => buyFish(id)}
+                onBuy={() => confirmBuy(spec.label, spec.price, () => buyFish(id))}
               />
             );
           })}
@@ -54,7 +70,7 @@ export function ShopPanel() {
                 description={spec.description}
                 price={spec.price}
                 canAfford={canAfford}
-                onBuy={() => buyPlant(id)}
+                onBuy={() => confirmBuy(spec.label, spec.price, () => buyPlant(id))}
               />
             );
           })}
@@ -78,7 +94,7 @@ export function ShopPanel() {
                 description=""
                 price={spec.price}
                 canAfford={canAfford}
-                onBuy={() => buyEquipment(t)}
+                onBuy={() => confirmBuy(spec.label, spec.price, () => buyEquipment(t))}
               />
             );
           })}

@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useAquariumStore } from "@/store/aquariumStore";
 import { useGameStore } from "@/store/gameStore";
+import { useConfirm } from "@/components/game/ConfirmProvider";
 import { cleanReward } from "@/simulation/engine";
 import {
   Cookie,
@@ -23,6 +24,7 @@ export function ControlBar({ floating = false }: { floating?: boolean }) {
   const water = useAquariumStore((s) => s.aquariums[0]?.water);
   const cleanReadyAt = useAquariumStore((s) => s.cleanReadyAt);
   const estReward = water ? cleanReward(water) : 0;
+  const confirm = useConfirm();
 
   // Tick once a second so the cooldown countdown stays live.
   const [now, setNow] = useState(() => Date.now());
@@ -98,7 +100,15 @@ export function ControlBar({ floating = false }: { floating?: boolean }) {
       <div className="flex items-center gap-2">
         {dead > 0 && (
           <button
-            onClick={() => removeDead()}
+            onClick={async () => {
+              const ok = await confirm({
+                title: "Net dead fish?",
+                message: `Scoop out ${dead} deceased fish? They'll be gone for good.`,
+                confirmLabel: "Net them",
+                tone: "danger",
+              });
+              if (ok) removeDead();
+            }}
             className="btn btn-danger"
             data-testid="remove-dead-button"
           >
@@ -131,11 +141,16 @@ export function ControlBar({ floating = false }: { floating?: boolean }) {
                 Lobby
               </Link>
               <button
-                onClick={() => {
+                onClick={async () => {
                   setMenuOpen(false);
-                  if (confirm("Reset the tank? You'll lose all progress.")) {
-                    resetTank();
-                  }
+                  const ok = await confirm({
+                    title: "Reset the tank?",
+                    message:
+                      "This wipes your fish, plants, gear, and cash back to a fresh starter tank. You'll lose all progress.",
+                    confirmLabel: "Reset everything",
+                    tone: "danger",
+                  });
+                  if (ok) resetTank();
                 }}
                 className="hud-menu-item hud-menu-item--danger"
                 data-testid="reset-tank-button"
