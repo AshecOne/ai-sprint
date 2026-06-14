@@ -157,11 +157,10 @@ export const tickSimulation = (ctx: TickContext): TickResult => {
     water.temperature += (21 - water.temperature) * 0.01 * dt;
   }
 
-  // Filter reduces ammonia and turbidity
+  // Filter clears suspended detritus and keeps the water polished. Its role in
+  // the nitrogen cycle (hosting nitrifying bacteria) is modelled below.
   if (filter) {
     const eff = (filter.power / 100) * dt;
-    water.ammonia = Math.max(0, water.ammonia - 0.012 * eff);
-    water.nitrite = Math.max(0, water.nitrite - 0.008 * eff);
     water.turbidity = Math.max(0, water.turbidity - 0.3 * eff);
     water.cleanliness = clamp(water.cleanliness + 0.4 * eff, 0, 100);
   } else {
@@ -193,21 +192,36 @@ export const tickSimulation = (ctx: TickContext): TickResult => {
     totalOxygenFromPlants += spec.oxygenRate * photo * p.scale * dt;
     totalNitrateAbsorbed += spec.nitrateRate * photo * p.scale * dt;
     let health = p.health;
-    if (water.nitrate < 1) health -= 0.05 * dt; // starved
+    if (water.nitrate < 0.3) health -= 0.05 * dt; // starved
     if (lit < 0.05) health -= 0.02 * dt;
     if (water.co2 > 10 && lit > 0.3) health += 0.05 * dt;
     return { ...p, health: clamp(health, 0, 100) };
   });
   water.oxygen = clamp(water.oxygen + totalOxygenFromPlants, 0, 14);
-  water.nitrate = Math.max(0, water.nitrate - totalNitrateAbsorbed);
+  // Uptake tapers as nitrate depletes, so plants don't strip it to zero (and
+  // then starve) — they hold it at a low, healthy equilibrium instead.
+  const uptakeFactor = water.nitrate / (water.nitrate + 12);
+  water.nitrate = Math.max(0, water.nitrate - totalNitrateAbsorbed * uptakeFactor);
 
   // Fish biological load
   const bioload =
     aliveFish.reduce((acc, f) => acc + (f.size / 5) * (1 + f.hunger / 200), 0) *
     dt;
   water.ammonia += bioload * 0.0028;
-  water.nitrite += water.ammonia * 0.04 * dt;
-  water.nitrate += water.nitrite * 0.03 * dt;
+
+  // Nitrification: nitrifying bacteria convert NH3 -> NO2 -> NO3, *consuming*
+  // each precursor (previously NH3/NO2 only ever grew, so they pinned at the
+  // clamp). Capacity lives mostly in a running filter, with a weak substrate
+  // baseline — so a filtered, fed tank keeps ammonia/nitrite safely low, while
+  // a neglected or unfiltered tank lets them climb into the danger zone.
+  const bioCap = 0.04 + (filter ? 0.06 * (filter.power / 100) : 0);
+  const nh3ToNo2 = water.ammonia * bioCap * dt;
+  water.ammonia -= nh3ToNo2;
+  water.nitrite += nh3ToNo2;
+  const no2ToNo3 = water.nitrite * bioCap * dt;
+  water.nitrite -= no2ToNo3;
+  water.nitrate += no2ToNo3;
+
   water.oxygen -= aliveFish.length * 0.008 * dt;
   water.turbidity += aliveFish.length * 0.005 * dt;
 
@@ -261,7 +275,24 @@ export const tickSimulation = (ctx: TickContext): TickResult => {
     if (hunger > 80) healthDelta -= 0.4;
     if (water.ammonia > 0.5) healthDelta -= water.ammonia * 1.5;
     if (water.oxygen < 4) healthDelta -= (4 - water.oxygen);
-    if (stress < 25 && hunger < 60) healthDelta += 0.15;
+
+    // Recovery: a fish in healthy water that isn't starving or panicking heals
+    // steadily toward full. The gate is "is the water actually good?" (low
+    // toxins, enough O2, temp/pH in its preferred range) rather than the old
+    // razor-thin stress<25 && hunger<60 that almost never triggered.
+    const tempOk =
+      water.temperature >= spec.prefs.tempMin &&
+      water.temperature <= spec.prefs.tempMax;
+    const phOk =
+      water.ph >= spec.prefs.phMin && water.ph <= spec.prefs.phMax;
+    const waterHealthy =
+      water.ammonia < 0.3 &&
+      water.nitrite < 0.6 &&
+      water.nitrate < 40 &&
+      water.oxygen > 5 &&
+      tempOk &&
+      phOk;
+    if (waterHealthy && hunger < 75 && stress < 50) healthDelta += 0.25;
 
     let health = clamp(f.health + healthDelta * dt, 0, 100);
     let alive: boolean = f.alive;
@@ -368,7 +399,7 @@ export const cleanReward = (water: WaterParameters): number => {
  * water change rolled in.
  */
 export const cleanTankWater = (water: WaterParameters): WaterParameters => {
-  const p = 0.3; // chemistry dilution, ~30% water change equivalent
+  const p = 0.55; // chemistry dilution, ~55% water change equivalent
   const fresh = createDefaultWater();
   return {
     ...water,
