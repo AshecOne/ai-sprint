@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { useAquariumStore } from "@/store/aquariumStore";
 import { useGameStore } from "@/store/gameStore";
 import { cleanReward } from "@/simulation/engine";
@@ -17,7 +18,20 @@ export function ControlBar() {
   const removeDead = useAquariumStore((s) => s.removeDeadFish);
   const dead = useAquariumStore((s) => s.fish.filter((f) => !f.alive).length);
   const water = useAquariumStore((s) => s.aquariums[0]?.water);
+  const cleanReadyAt = useAquariumStore((s) => s.cleanReadyAt);
   const estReward = water ? cleanReward(water, 1) : 0;
+
+  // Tick once a second so the cooldown countdown stays live.
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const t = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(t);
+  }, []);
+  const cooldownLeft = Math.max(0, Math.ceil((cleanReadyAt - now) / 1000));
+  const onCooldown = cooldownLeft > 0;
+  const cooldownLabel = `${Math.floor(cooldownLeft / 60)}:${String(
+    cooldownLeft % 60
+  ).padStart(2, "0")}`;
 
   return (
     <div className="panel flex items-center justify-between gap-3 px-3 py-2" data-testid="control-bar">
@@ -60,16 +74,21 @@ export function ControlBar() {
         </button>
         <button
           onClick={() => clean()}
-          className="btn btn-emerald"
+          disabled={onCooldown}
+          className={`btn btn-emerald ${onCooldown ? "opacity-50 cursor-not-allowed" : ""}`}
           data-testid="clean-tank-button"
           title={
-            estReward > 0
+            onCooldown
+              ? `Clean recharging — ready in ${cooldownLabel}`
+              : estReward > 0
               ? `Scrub the tank and sell ~$${estReward} of detritus`
               : "Tank is clean — nothing to sell yet"
           }
         >
           <Sparkles size={12} />
-          Clean{estReward > 0 ? ` (+$${estReward})` : ""}
+          {onCooldown
+            ? `Clean ${cooldownLabel}`
+            : `Clean${estReward > 0 ? ` (+$${estReward})` : ""}`}
         </button>
         <button
           onClick={() => change(0.25)}

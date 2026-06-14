@@ -17,6 +17,9 @@ import {
 import type { FishSpeciesId, PlantSpeciesId, EquipmentType } from "@/simulation/types";
 import { EQUIPMENT_SPECS, FISH_SPECIES, PLANT_SPECIES } from "@/simulation/species";
 
+/** Cooldown between paid Clean actions, so it can't be spammed. */
+export const CLEAN_COOLDOWN_MS = 60_000;
+
 const mkEvent = (
   severity: SimulationEvent["severity"],
   message: string
@@ -37,6 +40,8 @@ interface AquariumState {
   /** Increments on every clean action — a transient signal the renderer
    *  watches to spawn a "sparkle" burst. */
   cleanFx: number;
+  /** Timestamp (ms) when the Clean action becomes available again. */
+  cleanReadyAt: number;
 
   /** Replace internal state from engine tick result */
   applyTick: (data: {
@@ -89,6 +94,7 @@ export const useAquariumStore = create<AquariumState>()(
       ],
       cash: 250,
       cleanFx: 0,
+      cleanReadyAt: 0,
 
       applyTick: ({ aquarium, fish, plants, equipment, events }) =>
         set((s) => ({
@@ -163,11 +169,14 @@ export const useAquariumStore = create<AquariumState>()(
         set((s) => {
           const aq = s.aquariums[0];
           if (!aq) return s;
+          // Cooldown gate — ignore clicks while still recharging.
+          if (Date.now() < s.cleanReadyAt) return s;
           const reward = cleanReward(aq.water, 1);
           const newWater = cleanTankWater(aq.water);
           return {
             cash: s.cash + reward,
             cleanFx: s.cleanFx + 1,
+            cleanReadyAt: Date.now() + CLEAN_COOLDOWN_MS,
             aquariums: s.aquariums.map((a) =>
               a.id === aq.id ? { ...a, water: newWater } : a
             ),
@@ -305,6 +314,8 @@ export const useAquariumStore = create<AquariumState>()(
           plants: fresh.plants,
           equipment: fresh.equipment,
           cash: 250,
+          cleanFx: 0,
+          cleanReadyAt: 0,
           events: [mkEvent("success", "Tank reset to factory defaults")],
         });
       },
