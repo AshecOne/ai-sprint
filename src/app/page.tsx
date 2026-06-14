@@ -140,7 +140,7 @@ function SaveManager() {
           compact square cards; swipe / scroll sideways for more. The inner
           `w-max mx-auto` centres a short row but left-aligns (no clipped start)
           once it overflows, which `justify-center` + scroll can't do. */}
-      {!empty && (
+      {!empty && !creating && (
         <div className="save-row w-full overflow-x-auto pb-2">
           <div className="flex gap-3 w-max max-w-full mx-auto px-1">
             {saves.map((slot) => (
