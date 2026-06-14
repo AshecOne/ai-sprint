@@ -198,10 +198,15 @@ export const tickSimulation = (ctx: TickContext): TickResult => {
     return { ...p, health: clamp(health, 0, 100) };
   });
   water.oxygen = clamp(water.oxygen + totalOxygenFromPlants, 0, 14);
-  // Uptake tapers as nitrate depletes, so plants don't strip it to zero (and
-  // then starve) — they hold it at a low, healthy equilibrium instead.
+  // Plants are a *partial* nitrate sink, not a total one: they slow the climb
+  // and hold it in a healthy band, but nitrate still accumulates over time so
+  // the player has a visible reason to do a Clean / water change. Uptake also
+  // tapers as nitrate depletes, so plants never strip it to zero (and starve).
   const uptakeFactor = water.nitrate / (water.nitrate + 12);
-  water.nitrate = Math.max(0, water.nitrate - totalNitrateAbsorbed * uptakeFactor);
+  water.nitrate = Math.max(
+    0,
+    water.nitrate - totalNitrateAbsorbed * 0.25 * uptakeFactor
+  );
 
   // Fish biological load
   const bioload =
@@ -221,6 +226,10 @@ export const tickSimulation = (ctx: TickContext): TickResult => {
   const no2ToNo3 = water.nitrite * bioCap * dt;
   water.nitrite -= no2ToNo3;
   water.nitrate += no2ToNo3;
+  // Detritus mineralisation: fish waste/uneaten food breaks down straight into
+  // nitrate too. This is what makes NO3 visibly creep up in a stocked tank
+  // (the toxins NH3/NO2 stay low when filtered — nitrate is the one you watch).
+  water.nitrate += bioload * 0.006;
 
   water.oxygen -= aliveFish.length * 0.008 * dt;
   water.turbidity += aliveFish.length * 0.005 * dt;
