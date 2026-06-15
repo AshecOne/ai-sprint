@@ -8,6 +8,7 @@ import type {
   SimulationEvent,
 } from "@/simulation/types";
 import { createStarterTank, uid } from "@/simulation/engine";
+import { resolveTier, tierSpec } from "@/simulation/tanks";
 
 /**
  * Multi-slot save layer.
@@ -113,6 +114,31 @@ export function setActiveId(id: string | null): void {
   writeRegistry(reg);
 }
 
+/**
+ * Backfill fields added after a slot was first written so older saves load
+ * cleanly. Currently: the `tier` field (issue #24) — legacy tanks predate it,
+ * so infer it from volume (or default 0) and snap volume/dimensions to that
+ * tier's canonical values.
+ */
+function normalizeSnapshot(snap: SaveSnapshot): SaveSnapshot {
+  return {
+    ...snap,
+    aquariums: snap.aquariums.map((a) => {
+      if (typeof a.tier === "number") return a;
+      const tier = resolveTier(a);
+      const spec = tierSpec(tier);
+      return {
+        ...a,
+        tier,
+        volume: a.volume ?? spec.volume,
+        width: a.width ?? spec.width,
+        height: a.height ?? spec.height,
+        depth: a.depth ?? spec.depth,
+      };
+    }),
+  };
+}
+
 export function readSlot(id: string): SaveSnapshot | null {
   if (!hasWindow()) return null;
   try {
@@ -120,7 +146,7 @@ export function readSlot(id: string): SaveSnapshot | null {
     if (!raw) return null;
     const parsed = JSON.parse(raw) as { version?: number; snapshot?: SaveSnapshot };
     if (!parsed?.snapshot || !Array.isArray(parsed.snapshot.aquariums)) return null;
-    return parsed.snapshot;
+    return normalizeSnapshot(parsed.snapshot);
   } catch {
     return null;
   }

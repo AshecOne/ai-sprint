@@ -9,6 +9,7 @@ import type {
   WaterParameters,
 } from "./types";
 import { FISH_SPECIES, PLANT_SPECIES } from "./species";
+import { BASE_TANK_VOLUME } from "./tanks";
 
 let idCounter = 0;
 export const uid = (prefix = "id") => {
@@ -41,6 +42,7 @@ export const createStarterTank = (): {
   const aquarium: Aquarium = {
     id: uid("aqua"),
     name: "Starter Tank",
+    tier: 0,
     volume: 60,
     width: 60,
     height: 40,
@@ -142,6 +144,12 @@ export const tickSimulation = (ctx: TickContext): TickResult => {
   const dt = ctx.dtSeconds;
   const water = { ...ctx.aquarium.water };
 
+  // Tank volume dilutes the per-tick pollution load: a 240 L tank accumulates
+  // toxins/detritus ~4× slower than the 60 L baseline, so a bigger (upgraded)
+  // tank is genuinely more stable. Only the *production* terms below are scaled
+  // — nitrification conversions and equipment effects are unchanged.
+  const dilution = BASE_TANK_VOLUME / (ctx.aquarium.volume || BASE_TANK_VOLUME);
+
   // Equipment effects
   const filter = ctx.equipment.find((e) => e.type === "filter" && e.active);
   const heater = ctx.equipment.find((e) => e.type === "heater" && e.active);
@@ -212,7 +220,7 @@ export const tickSimulation = (ctx: TickContext): TickResult => {
   const bioload =
     aliveFish.reduce((acc, f) => acc + (f.size / 5) * (1 + f.hunger / 200), 0) *
     dt;
-  water.ammonia += bioload * 0.0028;
+  water.ammonia += bioload * 0.0028 * dilution;
 
   // Nitrification: nitrifying bacteria convert NH3 -> NO2 -> NO3, *consuming*
   // each precursor (previously NH3/NO2 only ever grew, so they pinned at the
@@ -229,13 +237,13 @@ export const tickSimulation = (ctx: TickContext): TickResult => {
   // Detritus mineralisation: fish waste/uneaten food breaks down straight into
   // nitrate too. This is what makes NO3 visibly creep up in a stocked tank
   // (the toxins NH3/NO2 stay low when filtered — nitrate is the one you watch).
-  water.nitrate += bioload * 0.006;
+  water.nitrate += bioload * 0.006 * dilution;
 
   water.oxygen -= aliveFish.length * 0.008 * dt;
-  water.turbidity += aliveFish.length * 0.005 * dt;
+  water.turbidity += aliveFish.length * 0.005 * dt * dilution;
 
   // Cleanliness drift
-  water.cleanliness = clamp(water.cleanliness - aliveFish.length * 0.01 * dt, 0, 100);
+  water.cleanliness = clamp(water.cleanliness - aliveFish.length * 0.01 * dt * dilution, 0, 100);
 
   // Clamp
   water.temperature = clamp(water.temperature, 5, 40);
@@ -379,13 +387,19 @@ export const feedAll = (fish: Fish[], strength = 35): FeedResult => {
 export const applyFeedLoad = (
   water: WaterParameters,
   strength: number,
-  waste: number
-): WaterParameters => ({
-  ...water,
-  cleanliness: clamp(water.cleanliness - strength * 0.08 * (1 + waste), 0, 100),
-  turbidity: clamp(water.turbidity + strength * 0.05 * (1 + waste), 0, 100),
-  ammonia: clamp(water.ammonia + strength * 0.004 * (1 + waste * 2), 0, 8),
-});
+  waste: number,
+  volume = BASE_TANK_VOLUME
+): WaterParameters => {
+  // Same volume dilution as the per-tick load: a bigger tank shrugs off the
+  // mess from a feeding more easily than a cramped Nano tank.
+  const d = BASE_TANK_VOLUME / (volume || BASE_TANK_VOLUME);
+  return {
+    ...water,
+    cleanliness: clamp(water.cleanliness - strength * 0.08 * (1 + waste) * d, 0, 100),
+    turbidity: clamp(water.turbidity + strength * 0.05 * (1 + waste) * d, 0, 100),
+    ammonia: clamp(water.ammonia + strength * 0.004 * (1 + waste * 2) * d, 0, 8),
+  };
+};
 
 /** Abstract 0..100 "how dirty" index combining cleanliness + turbidity. */
 export const dirtIndex = (water: WaterParameters): number =>

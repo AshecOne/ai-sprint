@@ -99,6 +99,8 @@ export interface Equipment {
 export interface Aquarium {
   id: string;
   name: string;
+  /** Upgrade tier index (0 = starter Nano Tank). See TANK_TIERS in tanks.ts. */
+  tier: number;
   /** Litres */
   volume: number;
   /** Real-world dimensions, cm — used for visual layout aspect ratio */
