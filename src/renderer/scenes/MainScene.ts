@@ -852,8 +852,17 @@ export class MainScene extends Phaser.Scene {
       this.surfaceShimmer.lineBetween(i, shimmerY + 3 + wave, i + 5, shimmerY + 3 + wave);
     }
 
-    // Fish behaviour
+    // Fish behaviour — lightweight boids. Each fish wanders toward a target;
+    // shoaling species are pulled toward their group's centre (cohesion), while
+    // a separation force keeps every fish spaced out. Cohesion *without*
+    // separation made the whole school collapse onto a single point in the
+    // middle — separation is what restores an organic, spread-out shoal.
     const aliveFish = state.fish.filter((f) => f.alive);
+    // Personal-space radius and how hard fish push apart inside it. Tuned so the
+    // shoal stays a loose cloud rather than overlapping or scattering.
+    const SEP_RADIUS = Math.max(34, width * 0.06);
+    const SEP_STRENGTH = 2.4; // relative to swim speed
+
     for (const fish of state.fish) {
       const visual = this.fishVisuals.get(fish.id);
       if (!visual) continue;
@@ -867,36 +876,70 @@ export class MainScene extends Phaser.Scene {
         continue;
       }
 
+      const stressFactor = 1 + (fish.stress / 100) * 0.6;
+      const speed = spec.baseSpeed * width * stressFactor * (fish.stress > 60 ? 1.5 : 1);
+
+      // Seek toward the wander target (px/sec velocity components).
       const tx = fish.targetX * width;
       const ty = fish.targetY * height;
       const dx = tx - visual.sprite.x;
       const dy = ty - visual.sprite.y;
       const dist = Math.hypot(dx, dy);
-      const stressFactor = 1 + (fish.stress / 100) * 0.6;
-      const speed = spec.baseSpeed * width * stressFactor * (fish.stress > 60 ? 1.5 : 1);
 
+      let velX = 0;
+      let velY = 0;
       if (dist < 8) {
+        // Reached the target — pick a fresh wander point in this fish's layer.
         const layer = spec.layer;
         const minY = layer === 0 ? 0.12 : layer === 1 ? 0.28 : SUBSTRATE_TOP_Y - 0.1;
         const maxY = layer === 0 ? 0.3  : layer === 1 ? SUBSTRATE_TOP_Y - 0.05 : SUBSTRATE_TOP_Y - 0.02;
         fish.targetX = Phaser.Math.FloatBetween(0.06, 0.94);
         fish.targetY = Phaser.Math.FloatBetween(minY, maxY);
       } else {
-        const vx = (dx / dist) * speed * dt;
-        const vy = (dy / dist) * speed * dt;
-        visual.sprite.x += vx;
-        visual.sprite.y += vy;
-        if (fish.stress > 60 && Math.random() < 0.2) {
-          visual.sprite.x += (Math.random() - 0.5) * 4;
-          visual.sprite.y += (Math.random() - 0.5) * 4;
+        velX += (dx / dist) * speed;
+        velY += (dy / dist) * speed;
+      }
+
+      // Separation: steer away from any neighbour inside the personal-space
+      // radius, more strongly the closer it is.
+      let sepX = 0;
+      let sepY = 0;
+      for (const other of aliveFish) {
+        if (other.id === fish.id) continue;
+        const ov = this.fishVisuals.get(other.id);
+        if (!ov) continue;
+        const ox = visual.sprite.x - ov.sprite.x;
+        const oy = visual.sprite.y - ov.sprite.y;
+        const d2 = ox * ox + oy * oy;
+        if (d2 > 0.01 && d2 < SEP_RADIUS * SEP_RADIUS) {
+          const d = Math.sqrt(d2);
+          const push = (SEP_RADIUS - d) / SEP_RADIUS; // 0..1
+          sepX += (ox / d) * push;
+          sepY += (oy / d) * push;
         }
-        fish.x = visual.sprite.x / width;
-        fish.y = visual.sprite.y / height;
-        if (Math.abs(vx) > 0.05) {
-          const dir = vx > 0 ? 1 : -1;
-          if (visual.sprite.flipX !== (dir === -1)) {
-            visual.sprite.setFlipX(dir === -1);
-          }
+      }
+      velX += sepX * speed * SEP_STRENGTH;
+      velY += sepY * speed * SEP_STRENGTH;
+
+      // Integrate, plus a little extra darting when panicking.
+      visual.sprite.x += velX * dt;
+      visual.sprite.y += velY * dt;
+      if (fish.stress > 60 && Math.random() < 0.2) {
+        visual.sprite.x += (Math.random() - 0.5) * 4;
+        visual.sprite.y += (Math.random() - 0.5) * 4;
+      }
+
+      // Keep fish inside the glass.
+      visual.sprite.x = Phaser.Math.Clamp(visual.sprite.x, width * 0.04, width * 0.96);
+      visual.sprite.y = Phaser.Math.Clamp(visual.sprite.y, height * 0.08, SUBSTRATE_TOP_Y * height);
+      fish.x = visual.sprite.x / width;
+      fish.y = visual.sprite.y / height;
+
+      // Face the way we're actually moving.
+      if (Math.abs(velX) * dt > 0.05) {
+        const dir = velX > 0 ? 1 : -1;
+        if (visual.sprite.flipX !== (dir === -1)) {
+          visual.sprite.setFlipX(dir === -1);
         }
       }
 
@@ -904,15 +947,23 @@ export class MainScene extends Phaser.Scene {
       else visual.sprite.clearTint();
       visual.sprite.setAlpha(1);
 
-      // shoaling pull
+      // Cohesion: occasionally aim toward the centre of the shoal (not onto a
+      // single peer — that's what caused the pile-up). Separation keeps spacing.
       if (spec.schooling > 1 && Math.random() < 0.02) {
         const companions = aliveFish.filter(
           (c) => c.species === fish.species && c.id !== fish.id
         );
         if (companions.length > 0) {
-          const target = companions[Math.floor(Math.random() * companions.length)];
-          fish.targetX = target.x + (Math.random() - 0.5) * 0.1;
-          fish.targetY = target.y + (Math.random() - 0.5) * 0.1;
+          let cx = 0;
+          let cy = 0;
+          for (const c of companions) {
+            cx += c.x;
+            cy += c.y;
+          }
+          cx /= companions.length;
+          cy /= companions.length;
+          fish.targetX = Phaser.Math.Clamp(cx + (Math.random() - 0.5) * 0.16, 0.06, 0.94);
+          fish.targetY = Phaser.Math.Clamp(cy + (Math.random() - 0.5) * 0.12, 0.12, SUBSTRATE_TOP_Y - 0.04);
         }
       }
     }
