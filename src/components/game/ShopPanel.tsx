@@ -5,7 +5,6 @@ import { useConfirm } from "@/components/game/ConfirmProvider";
 import { audio } from "@/audio/engine";
 import { FISH_SPECIES, PLANT_SPECIES, EQUIPMENT_SPECS } from "@/simulation/species";
 import { MAX_TANK_TIER, TANK_TIERS, tierSpec } from "@/simulation/tanks";
-import { ArrowUpCircle } from "lucide-react";
 import type { FishSpeciesId, PlantSpeciesId, EquipmentType } from "@/simulation/types";
 
 export function ShopPanel() {
@@ -53,6 +52,23 @@ export function ShopPanel() {
     }
   };
 
+  // Fish purchases are capacity-gated: if the tank is already full, don't even
+  // open the buy confirm — show a clear "can't buy" notice instead, so a click
+  // on a full tank never looks like a successful purchase.
+  const handleBuyFish = async (id: FishSpeciesId, label: string, price: number) => {
+    if (aliveCount >= currentTier.maxFish) {
+      audio.play("error");
+      await confirm({
+        title: "Tank is full",
+        message: `Your ${currentTier.name} holds ${currentTier.maxFish} fish and already has ${aliveCount}. Upgrade the tank first to add more fish.`,
+        confirmLabel: "Got it",
+        hideCancel: true,
+      });
+      return;
+    }
+    confirmBuy(label, price, () => buyFish(id));
+  };
+
   return (
     <div className="h-full overflow-y-auto pr-1 space-y-3" data-testid="shop-panel">
       {/* Tank upgrade */}
@@ -77,11 +93,11 @@ export function ShopPanel() {
               onClick={handleUpgrade}
               disabled={!canUpgrade}
               data-testid="upgrade-tank"
-              className={`btn btn-emerald flex items-center gap-1.5 py-1.5 px-3 text-[10px] ${
+              className={`btn btn-emerald py-1.5 px-3 text-[10px] ${
                 canUpgrade ? "" : "opacity-40 cursor-not-allowed"
               }`}
             >
-              <ArrowUpCircle size={12} />${nextTier.upgradePrice}
+              ${nextTier.upgradePrice}
             </button>
           </div>
         ) : (
@@ -108,7 +124,7 @@ export function ShopPanel() {
                 description={spec.description}
                 price={spec.price}
                 canAfford={canAfford}
-                onBuy={() => confirmBuy(spec.label, spec.price, () => buyFish(id))}
+                onBuy={() => handleBuyFish(id, spec.label, spec.price)}
               />
             );
           })}

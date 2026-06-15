@@ -53,10 +53,10 @@ export const createStarterTank = (): {
     autoFeed: true,
   };
 
+  // Six fish — fits the tier-0 Nano tank capacity (maxFish: 6).
   const fish: Fish[] = [
     spawnFish("guppy", 0.25, 0.35),
     spawnFish("guppy", 0.4, 0.4),
-    spawnFish("guppy", 0.55, 0.45),
     spawnFish("neon_tetra", 0.3, 0.5),
     spawnFish("neon_tetra", 0.5, 0.55),
     spawnFish("neon_tetra", 0.7, 0.48),

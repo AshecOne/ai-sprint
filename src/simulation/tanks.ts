@@ -19,11 +19,16 @@ export interface TankTier {
   upgradePrice: number;
 }
 
+// 5 levels (Level 1 = free starter). Capacity climbs 6 → 9 → 12 → 14 → 15 and
+// volume tracks it (~10 L per fish) so a bigger tank lets you keep MORE fish at
+// roughly the same per-fish water stability. Prices are deliberately gentle —
+// the only income source is cleaning, so upgrades must stay reachable.
 export const TANK_TIERS: TankTier[] = [
   { tier: 0, name: "Nano Tank",     volume: 60,  width: 60,  height: 40, depth: 30, maxFish: 6,  upgradePrice: 0 },
-  { tier: 1, name: "Standard Tank", volume: 120, width: 80,  height: 45, depth: 35, maxFish: 12, upgradePrice: 400 },
-  { tier: 2, name: "Large Tank",    volume: 240, width: 120, height: 50, depth: 45, maxFish: 24, upgradePrice: 1200 },
-  { tier: 3, name: "Show Tank",     volume: 400, width: 150, height: 60, depth: 50, maxFish: 40, upgradePrice: 3000 },
+  { tier: 1, name: "Standard Tank", volume: 90,  width: 70,  height: 42, depth: 32, maxFish: 9,  upgradePrice: 80 },
+  { tier: 2, name: "Large Tank",    volume: 120, width: 80,  height: 45, depth: 35, maxFish: 12, upgradePrice: 200 },
+  { tier: 3, name: "XL Tank",       volume: 140, width: 90,  height: 48, depth: 36, maxFish: 14, upgradePrice: 400 },
+  { tier: 4, name: "Show Tank",     volume: 150, width: 100, height: 50, depth: 38, maxFish: 15, upgradePrice: 700 },
 ];
 
 export const MAX_TANK_TIER = TANK_TIERS.length - 1;

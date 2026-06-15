@@ -13,6 +13,8 @@ export interface ConfirmDialogProps {
   confirmLabel?: string;
   cancelLabel?: string;
   tone?: ConfirmTone;
+  /** Hide the Cancel button — turns the dialog into a single-action notice. */
+  hideCancel?: boolean;
   /** When provided, renders a "don't ask again" checkbox bound to this state. */
   remember?: boolean;
   onRememberChange?: (next: boolean) => void;
@@ -39,6 +41,7 @@ export function ConfirmDialog({
   confirmLabel = "Confirm",
   cancelLabel = "Cancel",
   tone = "default",
+  hideCancel = false,
   remember,
   onRememberChange,
   rememberLabel = "Don't ask again",
@@ -146,14 +149,16 @@ export function ConfirmDialog({
         )}
 
         <div className="flex justify-end gap-2">
-          <button
-            type="button"
-            className="btn btn-ghost"
-            onClick={onCancel}
-            data-testid="confirm-cancel"
-          >
-            {cancelLabel}
-          </button>
+          {!hideCancel && (
+            <button
+              type="button"
+              className="btn btn-ghost"
+              onClick={onCancel}
+              data-testid="confirm-cancel"
+            >
+              {cancelLabel}
+            </button>
+          )}
           <button
             ref={confirmRef}
             type="button"
