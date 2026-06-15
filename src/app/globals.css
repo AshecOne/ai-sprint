@@ -59,6 +59,13 @@ body {
   background-attachment: fixed;
 }
 
+/* Pixel-art image upscaling — keeps sprites crisp at any display size. */
+.pixelated {
+  image-rendering: pixelated;
+  image-rendering: -moz-crisp-edges;
+  image-rendering: crisp-edges;
+}
+
 /* Pixel/CRT styling helpers */
 .font-display {
   font-family: "Press Start 2P", "VT323", monospace;
@@ -444,6 +451,18 @@ body {
   z-index: 0;
   overflow: hidden;
   pointer-events: none;
+  background-image: url('/sprites/tank_background.png');
+  background-size: cover;
+  background-position: center center;
+}
+
+/* Dark overlay so text and animated elements stay readable over the background art. */
+.lobby-bg::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: rgba(4, 14, 24, 0.58);
+  z-index: 0;
 }
 
 /* drifting light beams from the surface */

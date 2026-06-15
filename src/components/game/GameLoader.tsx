@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { PixelFish, PixelPlant } from "./PixelCreatures";
+import Image from "next/image";
+import { PixelPlant } from "./PixelCreatures";
 
 const FADE_MS = 450;
 
@@ -75,10 +76,15 @@ export function GameLoader({ ready }: { ready: boolean }) {
           textAlign: "center",
         }}
       >
-        <h1 className="font-display text-4xl sm:text-6xl leading-tight lobby-title">
-          <span className="text-cyan-300">AQUA</span>
-          <span className="text-amber-300">SIM</span>
-        </h1>
+        <Image
+          src="/logo.png"
+          alt="AquaSim"
+          width={3584}
+          height={1184}
+          style={{ width: 260, height: "auto" }}
+          className="drop-shadow-[0_0_24px_rgba(34,211,238,0.4)]"
+          priority
+        />
         <p className="lobby-hint" style={{ marginTop: "1.5rem" }}>
           Menyiapkan akuarium…
         </p>
@@ -93,12 +99,7 @@ function LoaderBackground() {
     <div className="lobby-bg" aria-hidden="true">
       <div className="lobby-water" />
 
-      <PixelFish className="lobby-fish lobby-fish--1" color="#f5b461" belly="#fb7185" />
-      <PixelFish className="lobby-fish lobby-fish--2" color="#22d3ee" belly="#a5f3fc" />
-      <PixelFish className="lobby-fish lobby-fish--3" color="#a3e635" belly="#ecfeff" />
-      <PixelFish className="lobby-fish lobby-fish--4" color="#38bdf8" belly="#a5f3fc" />
-
-      <span className="lobby-bubble lobby-bubble--1" />
+<span className="lobby-bubble lobby-bubble--1" />
       <span className="lobby-bubble lobby-bubble--2" />
       <span className="lobby-bubble lobby-bubble--3" />
       <span className="lobby-bubble lobby-bubble--4" />
@@ -106,10 +107,10 @@ function LoaderBackground() {
       <span className="lobby-bubble lobby-bubble--6" />
 
       <div className="lobby-floor">
-        <PixelPlant className="lobby-plant lobby-plant--1" />
-        <PixelPlant className="lobby-plant lobby-plant--2" />
-        <PixelPlant className="lobby-plant lobby-plant--3" />
-        <PixelPlant className="lobby-plant lobby-plant--4" />
+        <PixelPlant className="lobby-plant lobby-plant--1" species="amazon_sword" />
+        <PixelPlant className="lobby-plant lobby-plant--2" species="anubias" />
+        <PixelPlant className="lobby-plant lobby-plant--3" species="vallisneria" />
+        <PixelPlant className="lobby-plant lobby-plant--4" species="java_moss" />
       </div>
     </div>
   );
