@@ -7,9 +7,10 @@
 
 import type { Aquarium, Equipment, Fish, Plant } from "./types";
 import { tickSimulation, feedAll, applyFeedLoad } from "./engine";
+import { FIXED_STEP_SECONDS } from "./loop";
 
-/** Fixed simulation step, in seconds (100 ms). */
-export const FIXED_STEP = 0.1;
+/** Fixed simulation step, in seconds (100 ms) — shared with the live loop. */
+export const FIXED_STEP = FIXED_STEP_SECONDS;
 
 export interface SimState {
   aquarium: Aquarium;
