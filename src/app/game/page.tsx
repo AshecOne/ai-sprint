@@ -16,6 +16,11 @@ import {
 } from "@/store/saveManager";
 import { useAutoSave } from "@/hooks/useAutoSave";
 import { useSimulationLoop } from "@/hooks/useSimulationLoop";
+import {
+  fastForwardAwayChunked,
+  shouldFastForward,
+  type AwaySummary,
+} from "@/simulation/offline";
 import { useIsMobile, useRotatePrompt, useClientSettled } from "@/hooks/useIsMobile";
 import { GameLoader } from "@/components/game/GameLoader";
 import { TopBar } from "@/components/game/TopBar";
@@ -27,6 +32,7 @@ import { EditOverlay } from "@/components/game/EditOverlay";
 import { PanelTabs } from "@/components/game/PanelTabs";
 import { MobileNav } from "@/components/game/MobileNav";
 import { ConfirmProvider } from "@/components/game/ConfirmProvider";
+import { WhileYouWereAway } from "@/components/game/WhileYouWereAway";
 
 // Phaser canvas is strictly client-side. No `loading` fallback here — the
 // full-screen GameLoader covers the whole page until the scene is truly ready.
@@ -60,6 +66,8 @@ export default function GamePage() {
   const [minTimeElapsed, setMinTimeElapsed] = useState(false);
   // True once the active save slot has been loaded into the store.
   const [hydrated, setHydrated] = useState(false);
+  // Populated when the tank was fast-forwarded over offline time on load (#34).
+  const [awaySummary, setAwaySummary] = useState<AwaySummary | null>(null);
   const ready = sceneReady && minTimeElapsed && settled && hydrated;
 
   // Auto-save the live store into its slot once we've hydrated one.
@@ -76,8 +84,11 @@ export default function GamePage() {
 
   // Hydrate the active save slot into the store on mount. Loading the tank from
   // localStorage is the save layer's job; if there's no slot to load, send the
-  // player back to the lobby to create one.
+  // player back to the lobby to create one. If the player was away a while
+  // (savedAt is old), fast-forward the sim over that gap first (#34) and show a
+  // "While you were away…" recap.
   useEffect(() => {
+    let cancelled = false;
     migrateLegacy(); // one-time: import a pre-#16 single-tank blob if present
     let id = getActiveId();
     let snap = id ? readSlot(id) : null;
@@ -90,23 +101,73 @@ export default function GamePage() {
         setActiveId(id);
       }
     }
-    if (snap && id) {
-      useAquariumStore.setState({
-        aquariums: snap.aquariums,
-        fish: snap.fish,
-        plants: snap.plants,
-        equipment: snap.equipment,
-        cash: snap.cash,
-        events: snap.events,
-        cleanReadyAt: snap.cleanReadyAt,
-        cleanFx: 0,
-      });
-      setActiveAquariumId(id);
-      setHydrated(true);
-    } else {
+    if (!snap || !id) {
       // No saves at all — pick/create one in the lobby.
       router.replace("/");
+      return;
     }
+
+    const slotId = id;
+    const loaded = snap;
+
+    const commit = (
+      aquarium: (typeof loaded.aquariums)[number],
+      fish: typeof loaded.fish,
+      plants: typeof loaded.plants,
+      equipment: typeof loaded.equipment,
+      events: typeof loaded.events,
+      summary: AwaySummary | null
+    ) => {
+      if (cancelled) return;
+      useAquariumStore.setState({
+        aquariums: loaded.aquariums.map((a, i) => (i === 0 ? aquarium : a)),
+        fish,
+        plants,
+        equipment,
+        cash: loaded.cash,
+        events,
+        cleanReadyAt: loaded.cleanReadyAt,
+        cleanFx: 0,
+      });
+      setActiveAquariumId(slotId);
+      if (summary) setAwaySummary(summary);
+      setHydrated(true);
+    };
+
+    const elapsed = loaded.savedAt ? (Date.now() - loaded.savedAt) / 1000 : 0;
+
+    if (shouldFastForward(elapsed) && loaded.aquariums[0]) {
+      // Catch up the world over the away time in chunks (keeps the loader
+      // animating), then commit the advanced state + recap.
+      fastForwardAwayChunked(
+        {
+          aquarium: loaded.aquariums[0],
+          fish: loaded.fish,
+          plants: loaded.plants,
+          equipment: loaded.equipment,
+        },
+        elapsed
+      ).then(({ state, events, summary }) => {
+        // Only surface meaningful catch-up events (e.g. deaths) in the log —
+        // not the routine warning spam — newest first, capped like applyTick.
+        const notable = events.filter((e) => e.severity === "danger");
+        const merged = [...notable.reverse(), ...loaded.events].slice(0, 80);
+        commit(state.aquarium, state.fish, state.plants, state.equipment, merged, summary);
+      });
+    } else {
+      commit(
+        loaded.aquariums[0],
+        loaded.fish,
+        loaded.plants,
+        loaded.equipment,
+        loaded.events,
+        null
+      );
+    }
+
+    return () => {
+      cancelled = true;
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -217,6 +278,15 @@ export default function GamePage() {
       {/* Full-screen loading overlay — covers HUD + canvas until the renderer
           is truly ready, then fades out. Self-unmounts after the fade. */}
       <GameLoader ready={ready} />
+
+      {/* "While you were away…" recap — only after the loader has revealed the
+          tank, so it lands on the game rather than over the loading screen. */}
+      {awaySummary && ready && (
+        <WhileYouWereAway
+          summary={awaySummary}
+          onClose={() => setAwaySummary(null)}
+        />
+      )}
     </main>
     </ConfirmProvider>
   );

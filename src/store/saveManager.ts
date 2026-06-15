@@ -55,6 +55,13 @@ export interface SaveSnapshot {
   cash: number;
   events: SimulationEvent[];
   cleanReadyAt: number;
+  /**
+   * Epoch ms when this slot was last written. Stamped by `writeSlot`, surfaced
+   * by `readSlot`. Drives offline/away progression (#34): on load,
+   * `Date.now() - savedAt` is how long the tab was closed. Absent on pre-#34
+   * saves → treated as "no time away".
+   */
+  savedAt?: number;
 }
 
 interface Registry {
@@ -144,9 +151,13 @@ export function readSlot(id: string): SaveSnapshot | null {
   try {
     const raw = window.localStorage.getItem(SLOT_PREFIX + id);
     if (!raw) return null;
-    const parsed = JSON.parse(raw) as { version?: number; snapshot?: SaveSnapshot };
+    const parsed = JSON.parse(raw) as {
+      version?: number;
+      savedAt?: number;
+      snapshot?: SaveSnapshot;
+    };
     if (!parsed?.snapshot || !Array.isArray(parsed.snapshot.aquariums)) return null;
-    return normalizeSnapshot(parsed.snapshot);
+    return { ...normalizeSnapshot(parsed.snapshot), savedAt: parsed.savedAt };
   } catch {
     return null;
   }
@@ -157,7 +168,7 @@ export function writeSlot(id: string, snapshot: SaveSnapshot): void {
   try {
     window.localStorage.setItem(
       SLOT_PREFIX + id,
-      JSON.stringify({ version: SLOT_VERSION, snapshot })
+      JSON.stringify({ version: SLOT_VERSION, savedAt: Date.now(), snapshot })
     );
   } catch {
     /* best-effort */
