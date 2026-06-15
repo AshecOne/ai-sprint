@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
+import Image from "next/image";
 import { useGameStore } from "@/store/gameStore";
 import { useAquariumStore } from "@/store/aquariumStore";
 import { useAudioStore } from "@/store/audioStore";
@@ -58,9 +59,14 @@ export function TopBar() {
       data-testid="topbar"
     >
       <div className="flex items-center gap-2 sm:gap-3 min-w-0">
-        <h1 className="font-display text-[11px] sm:text-sm tracking-wider text-cyan-300 shrink-0">
-          AQUASIM
-        </h1>
+        <Image
+          src="/logo.png"
+          alt="AquaSim"
+          width={3584}
+          height={1184}
+          className="shrink-0 h-6 sm:h-7 w-auto"
+          priority
+        />
         <div className="hidden lg:block text-[10px] text-slate-500 uppercase tracking-widest">
           Tank: <span className="text-slate-200">{aquarium?.name ?? "—"}</span>
         </div>

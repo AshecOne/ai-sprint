@@ -2,8 +2,14 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import dynamic from "next/dynamic";
+import Image from "next/image";
+
+const LobbyCanvas = dynamic(() => import("@/components/game/LobbyCanvas"), {
+  ssr: false,
+});
 import { Check, Fish, Pencil, Play, Plus, Trash2, X } from "lucide-react";
-import { PixelFish, PixelPlant } from "@/components/game/PixelCreatures";
+import { PixelPlant } from "@/components/game/PixelCreatures";
 import { ConfirmProvider, useConfirm } from "@/components/game/ConfirmProvider";
 import { requestAppFullscreen } from "@/hooks/useFullscreen";
 import { useAudioStore } from "@/store/audioStore";
@@ -41,14 +47,15 @@ export default function HomePage() {
         <LobbyBackground />
 
         <div className="relative z-10 flex flex-col items-center text-center w-full max-w-md sm:max-w-3xl">
-          <div className="title-eyebrow mb-4">PIXEL AQUARIUM SIM</div>
-          <h1
-            className="font-display text-4xl sm:text-6xl md:text-7xl leading-tight mb-8 lobby-title"
+            <Image
+            src="/logo.png"
+            alt="AquaSim — Pixel Aquarium Simulator"
+            width={3584}
+            height={1184}
+            className="mb-8 w-[220px] sm:w-[260px] h-auto drop-shadow-[0_0_28px_rgba(34,211,238,0.45)]"
+            priority
             data-testid="landing-title"
-          >
-            <span className="text-cyan-300">AQUA</span>
-            <span className="text-amber-300">SIM</span>
-          </h1>
+          />
 
           <SaveManager />
         </div>
@@ -337,15 +344,11 @@ function timeAgo(iso: string): string {
 function LobbyBackground() {
   return (
     <div className="lobby-bg" aria-hidden="true">
+      <LobbyCanvas />
       {/* sunbeams / water tint */}
       <div className="lobby-water" />
 
       {/* swimming fish */}
-      <PixelFish className="lobby-fish lobby-fish--1" color="#f5b461" belly="#fb7185" />
-      <PixelFish className="lobby-fish lobby-fish--2" color="#22d3ee" belly="#a5f3fc" />
-      <PixelFish className="lobby-fish lobby-fish--3" color="#a3e635" belly="#ecfeff" />
-      <PixelFish className="lobby-fish lobby-fish--4" color="#38bdf8" belly="#a5f3fc" />
-
       {/* rising bubbles */}
       <span className="lobby-bubble lobby-bubble--1" />
       <span className="lobby-bubble lobby-bubble--2" />
@@ -356,10 +359,10 @@ function LobbyBackground() {
 
       {/* swaying plants + substrate */}
       <div className="lobby-floor">
-        <PixelPlant className="lobby-plant lobby-plant--1" />
-        <PixelPlant className="lobby-plant lobby-plant--2" />
-        <PixelPlant className="lobby-plant lobby-plant--3" />
-        <PixelPlant className="lobby-plant lobby-plant--4" />
+        <PixelPlant className="lobby-plant lobby-plant--1" species="vallisneria" />
+        <PixelPlant className="lobby-plant lobby-plant--2" species="amazon_sword" />
+        <PixelPlant className="lobby-plant lobby-plant--3" species="java_fern" />
+        <PixelPlant className="lobby-plant lobby-plant--4" species="java_moss" />
       </div>
     </div>
   );
