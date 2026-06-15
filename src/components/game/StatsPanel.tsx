@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useAquariumStore } from "@/store/aquariumStore";
 import { FISH_SPECIES } from "@/simulation/species";
+import { tierSpec } from "@/simulation/tanks";
 import { cleanReward } from "@/simulation/engine";
 import { PixelFace } from "./PixelFace";
 import { audio } from "@/audio/engine";
@@ -36,6 +37,7 @@ export function StatsPanel() {
 
   if (!aquarium) return null;
   const water = aquarium.water;
+  const tank = tierSpec(aquarium.tier ?? 0);
   const aliveFish = fish.filter((f) => f.alive);
   const avgStress =
     aliveFish.length > 0
@@ -56,7 +58,7 @@ export function StatsPanel() {
       <section className="panel p-3">
         <header className="flex items-center justify-between mb-2">
           <span className="section-title">Water</span>
-          <span className="title-eyebrow">{aquarium.volume}L · {aquarium.width}×{aquarium.height}×{aquarium.depth}cm</span>
+          <span className="title-eyebrow">{tank.name} · {aquarium.volume}L · {aquarium.width}×{aquarium.height}×{aquarium.depth}cm</span>
         </header>
         <ParamRow icon={<Thermometer size={12} />} label="Temp" value={`${water.temperature.toFixed(1)} °C`} bar={(water.temperature - 18) / 14} tone={judge(water.temperature, 23, 28, 20, 31).tone} />
         <ParamRow icon={<Beaker size={12} />} label="pH" value={water.ph.toFixed(2)} bar={(water.ph - 5) / 4} tone={judge(water.ph, 6.5, 7.8, 6.0, 8.2).tone} />
@@ -87,7 +89,7 @@ export function StatsPanel() {
       <section className="panel p-3">
         <header className="flex items-center justify-between mb-2">
           <span className="section-title">Livestock</span>
-          <span className="title-eyebrow">{aliveFish.length} alive</span>
+          <span className="title-eyebrow">{aliveFish.length}/{tank.maxFish} fish</span>
         </header>
         {/* Vitals are averages over *living* fish — meaningless with none, so
             hide the cards entirely until there's at least one fish alive. */}

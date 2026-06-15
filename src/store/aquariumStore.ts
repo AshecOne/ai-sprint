@@ -15,6 +15,7 @@ import {
 } from "@/simulation/engine";
 import type { FishSpeciesId, PlantSpeciesId, EquipmentType } from "@/simulation/types";
 import { EQUIPMENT_SPECS, FISH_SPECIES, PLANT_SPECIES } from "@/simulation/species";
+import { MAX_TANK_TIER, TANK_TIERS, tierSpec } from "@/simulation/tanks";
 
 /** Cooldown between paid Clean actions, so it can't be spammed. */
 export const CLEAN_COOLDOWN_MS = 60_000;
@@ -62,6 +63,7 @@ interface AquariumState {
   cleanTank: () => void;
 
   buyFish: (species: FishSpeciesId) => void;
+  upgradeTank: () => void;
   removeFishById: (id: string) => void;
   removeDeadFish: () => void;
 
@@ -138,7 +140,7 @@ export const useAquariumStore = create<AquariumState>()(
           const aquariums = aq
             ? s.aquariums.map((a) =>
                 a.id === aq.id
-                  ? { ...a, water: applyFeedLoad(a.water, strength, waste) }
+                  ? { ...a, water: applyFeedLoad(a.water, strength, waste, a.volume) }
                   : a
               )
             : s.aquariums;
@@ -192,6 +194,22 @@ export const useAquariumStore = create<AquariumState>()(
       buyFish: (species) =>
         set((s) => {
           const spec = FISH_SPECIES[species];
+          const aq = s.aquariums[0];
+          // Capacity gate: each tank tier caps how many *living* fish it holds.
+          // Upgrading the tank is the way to raise this — see upgradeTank().
+          const maxFish = tierSpec(aq?.tier ?? 0).maxFish;
+          const aliveCount = s.fish.filter((f) => f.alive).length;
+          if (aliveCount >= maxFish) {
+            return {
+              events: [
+                mkEvent(
+                  "warn",
+                  `Tank is full (${aliveCount}/${maxFish}) — upgrade the tank for more fish`
+                ),
+                ...s.events,
+              ].slice(0, 80),
+            };
+          }
           if (s.cash < spec.price) {
             return {
               events: [
@@ -205,6 +223,55 @@ export const useAquariumStore = create<AquariumState>()(
             fish: [...s.fish, spawnFish(species)],
             events: [
               mkEvent("success", `Added a ${spec.label} to the tank`),
+              ...s.events,
+            ].slice(0, 80),
+          };
+        }),
+
+      upgradeTank: () =>
+        set((s) => {
+          const aq = s.aquariums[0];
+          if (!aq) return s;
+          const current = aq.tier ?? 0;
+          if (current >= MAX_TANK_TIER) {
+            return {
+              events: [
+                mkEvent("warn", "Tank is already at the maximum tier"),
+                ...s.events,
+              ].slice(0, 80),
+            };
+          }
+          const next = TANK_TIERS[current + 1];
+          if (s.cash < next.upgradePrice) {
+            return {
+              events: [
+                mkEvent(
+                  "warn",
+                  `Not enough cash to upgrade to ${next.name} ($${next.upgradePrice})`
+                ),
+                ...s.events,
+              ].slice(0, 80),
+            };
+          }
+          return {
+            cash: s.cash - next.upgradePrice,
+            aquariums: s.aquariums.map((a) =>
+              a.id === aq.id
+                ? {
+                    ...a,
+                    tier: next.tier,
+                    volume: next.volume,
+                    width: next.width,
+                    height: next.height,
+                    depth: next.depth,
+                  }
+                : a
+            ),
+            events: [
+              mkEvent(
+                "success",
+                `Upgraded to ${next.name} — ${next.volume}L, holds ${next.maxFish} fish`
+              ),
               ...s.events,
             ].slice(0, 80),
           };

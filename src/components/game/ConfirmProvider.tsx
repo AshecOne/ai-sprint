@@ -16,6 +16,8 @@ export interface ConfirmOptions {
   confirmLabel?: string;
   cancelLabel?: string;
   tone?: ConfirmTone;
+  /** Hide the Cancel button — turns the dialog into a single-action notice. */
+  hideCancel?: boolean;
   /**
    * When set, the dialog shows a "don't ask again" checkbox. Ticking it and
    * confirming suppresses every future confirm() with the same key for the
@@ -83,6 +85,7 @@ export function ConfirmProvider({ children }: { children: React.ReactNode }) {
         confirmLabel={state.confirmLabel}
         cancelLabel={state.cancelLabel}
         tone={state.tone}
+        hideCancel={state.hideCancel}
         remember={remember}
         rememberLabel={state.rememberLabel}
         onRememberChange={state.rememberKey ? setRemember : undefined}
